@@ -402,3 +402,85 @@ Implementation should use responsive CSS and avoid fixed-width layouts that brea
 - The current project folder does not yet contain the Assessment 1 implementation or any Vue project files.
 - Before Phase 1, confirm whether the existing Assessment 1 files are located elsewhere and should be copied into this folder by the student.
 - If this empty folder is intentional, Phase 1 can begin from a clean Vue 3 scaffold after human review.
+
+## 14. Phase 1 Actual Implementation Baseline
+
+Phase 1 established the Vue application foundation without implementing later-stage business features such as authentication, role guards, appointment persistence, dynamic search, Local Storage bookings, or aggregated ratings.
+
+Actual technical choices:
+
+- Package manager: npm
+- Vue: `3.5.40`
+- Vite: `7.3.6`
+- Vue Router: `4.6.4`
+- Language: JavaScript, not TypeScript
+- Styling approach: custom modular CSS split across `base.css`, `layout.css`, `components.css`, `pages.css`, and `responsive.css`
+- Build command: `npm run build`
+- Lint command: not configured in Phase 1
+- Test command: not configured in Phase 1
+
+Actual Phase 1 project structure:
+
+```text
+FIT5032-A2-Migrant-Health-Support-Hub/
+├── docs/
+│   ├── A2_IMPLEMENTATION_PLAN.md
+│   ├── A2_REQUIREMENTS_TRACEABILITY.md
+│   └── PHASE_1_MANUAL_CHECKLIST.md
+├── public/
+│   └── site-icon.svg
+├── src/
+│   ├── App.vue
+│   ├── main.js
+│   ├── assets/styles/
+│   ├── components/
+│   ├── router/
+│   └── views/
+├── index.html
+├── package.json
+├── package-lock.json
+└── vite.config.js
+```
+
+Actual Phase 1 routes:
+
+| Path | View |
+| --- | --- |
+| `/` | `HomeView.vue` |
+| `/resources` | `ResourcesView.vue` |
+| `/resources/:id` | `ResourceDetailView.vue` |
+| `/services` | `ServicesView.vue` |
+| `/appointments` | `AppointmentView.vue` |
+| `/events` | `EventsView.vue` |
+| `/login` | `LoginView.vue` |
+| `/register` | `RegisterView.vue` |
+| `/profile` | `ProfileView.vue` |
+| `/admin` | `AdminDashboardView.vue` |
+| `/:pathMatch(.*)*` | `NotFoundView.vue` |
+
+Actual reusable components:
+
+- `AppHeader.vue`
+- `AppFooter.vue`
+- `PageHero.vue`
+- `FeatureCard.vue`
+- `SectionHeading.vue`
+- `PlaceholderNotice.vue`
+
+Actual responsive approach:
+
+- Mobile navigation is available below `768px` with `aria-label`, `aria-expanded`, keyboard-accessible links, automatic close on link click, and Escape-key close behavior.
+- Card grids collapse from three columns to two columns below `992px`, then one column below `768px`.
+- Forms collapse to one column below `768px`.
+- Content uses constrained max widths so large screens do not stretch text indefinitely.
+- Additional breakpoint handling is included for below `576px`, `768px`, `992px`, `1200px`, and above `1400px`.
+
+Phase 1 verification:
+
+| Command | Result |
+| --- | --- |
+| `npm install` | Passed after rerunning with network permission; installed 37 packages and reported 0 vulnerabilities. |
+| `npm run build` | First run failed with `Error: spawn EPERM` from the Vite/esbuild child process; rerun with permission passed. |
+| `npm list vue` | Passed; verified Vue `3.5.40`. |
+| `npm list vue-router` | Passed; verified Vue Router `4.6.4`. |
+| `git status --short` | To be checked at Phase 1 handoff. |
