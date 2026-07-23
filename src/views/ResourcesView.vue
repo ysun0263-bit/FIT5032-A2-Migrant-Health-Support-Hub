@@ -1,25 +1,49 @@
 <script setup>
-import FeatureCard from '../components/FeatureCard.vue'
-import PlaceholderNotice from '../components/PlaceholderNotice.vue'
+import { computed, ref } from 'vue'
+import { healthResources } from '../data/healthResources'
+import ResourceCard from '../components/ResourceCard.vue'
+import ResourceFilters from '../components/ResourceFilters.vue'
 import SectionHeading from '../components/SectionHeading.vue'
 
-const resources = [
-  {
-    title: 'Understanding Medicare',
-    text: 'A simple introduction to Medicare access, GP visits, and common documents new arrivals may need.',
-    tag: 'Health system',
-  },
-  {
-    title: 'Finding mental health support',
-    text: 'Example guidance for choosing culturally safe counselling, community support, and crisis pathways.',
-    tag: 'Wellbeing',
-  },
-  {
-    title: 'Preparing for a clinic visit',
-    text: 'A checklist-style resource for language support, questions to ask, and follow-up planning.',
-    tag: 'Appointments',
-  },
-]
+const searchTerm = ref('')
+const selectedTopic = ref('')
+const selectedLanguage = ref('')
+const selectedServiceType = ref('')
+
+const topics = computed(() => sortedUnique(healthResources.map((resource) => resource.topic)))
+const languages = computed(() => sortedUnique(healthResources.map((resource) => resource.language)))
+const serviceTypes = computed(() =>
+  sortedUnique(healthResources.map((resource) => resource.serviceType)),
+)
+
+const filteredResources = computed(() => {
+  const query = searchTerm.value.trim().toLowerCase()
+
+  return healthResources.filter((resource) => {
+    const matchesSearch =
+      !query ||
+      [resource.title, resource.summary, resource.topic].some((value) =>
+        value.toLowerCase().includes(query),
+      )
+    const matchesTopic = !selectedTopic.value || resource.topic === selectedTopic.value
+    const matchesLanguage = !selectedLanguage.value || resource.language === selectedLanguage.value
+    const matchesServiceType =
+      !selectedServiceType.value || resource.serviceType === selectedServiceType.value
+
+    return matchesSearch && matchesTopic && matchesLanguage && matchesServiceType
+  })
+})
+
+function sortedUnique(values) {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b))
+}
+
+function resetFilters() {
+  searchTerm.value = ''
+  selectedTopic.value = ''
+  selectedLanguage.value = ''
+  selectedServiceType.value = ''
+}
 </script>
 
 <template>
@@ -29,36 +53,34 @@ const resources = [
         level="h1"
         eyebrow="Health Resources"
         title="Search and browse health information"
-        text="This Phase 1 page shows the visual structure for resource discovery. Dynamic search and filtering will be implemented in a later phase."
+        text="Search by keyword and combine topic, language, and service type filters. Results update immediately from JavaScript data structures and Vue computed state."
       />
 
-      <div class="search-panel" aria-label="Resource search placeholder">
-        <label for="resource-search">Search resources</label>
-        <input
-          id="resource-search"
-          type="search"
-          placeholder="Search will be enabled in a later phase"
-          disabled
-        >
-        <div class="filter-row" aria-label="Filter placeholders">
-          <button type="button" disabled>Language</button>
-          <button type="button" disabled>Topic</button>
-          <button type="button" disabled>Service type</button>
-        </div>
+      <ResourceFilters
+        v-model:search-term="searchTerm"
+        v-model:selected-topic="selectedTopic"
+        v-model:selected-language="selectedLanguage"
+        v-model:selected-service-type="selectedServiceType"
+        :topics="topics"
+        :languages="languages"
+        :service-types="serviceTypes"
+        :result-count="filteredResources.length"
+        :total-count="healthResources.length"
+        @reset="resetFilters"
+      />
+
+      <div v-if="filteredResources.length" class="card-grid three">
+        <ResourceCard
+          v-for="resource in filteredResources"
+          :key="resource.id"
+          :resource="resource"
+        />
       </div>
 
-      <PlaceholderNotice text="Dynamic search, filters, and saved resources are intentionally not implemented in Phase 1." />
-
-      <div class="card-grid three">
-        <FeatureCard
-          v-for="resource in resources"
-          :key="resource.title"
-          :title="resource.title"
-          :text="resource.text"
-          :tag="resource.tag"
-        >
-          <RouterLink class="text-link" to="/resources/medicare-basics">View example detail</RouterLink>
-        </FeatureCard>
+      <div v-else class="empty-state" role="status">
+        <h2>No matching resources</h2>
+        <p>Try a different keyword, topic, language, or service type.</p>
+        <button type="button" @click="resetFilters">Reset Filters</button>
       </div>
     </section>
   </div>

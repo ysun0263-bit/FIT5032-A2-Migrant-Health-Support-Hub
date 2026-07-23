@@ -1,0 +1,66 @@
+export const healthServices = [
+  {
+    id: 'service-gp-clinic',
+    name: 'New Arrival GP Access Clinic',
+    category: 'General Practice',
+    suburb: 'Clayton',
+    languages: ['English', 'Mandarin'],
+    shortDescription: 'Example GP service for routine appointments, referrals, and care planning.',
+    contactType: 'Phone booking',
+    availability: 'Weekdays',
+  },
+  {
+    id: 'service-community-health',
+    name: 'Community Health Welcome Centre',
+    category: 'Community Health Centre',
+    suburb: 'Dandenong',
+    languages: ['English', 'Arabic', 'Dari'],
+    shortDescription: 'Example community health centre for care navigation and wellbeing programs.',
+    contactType: 'Online enquiry',
+    availability: 'Weekdays and selected Saturdays',
+  },
+  {
+    id: 'service-interpreter-access',
+    name: 'Health Interpreter Access Desk',
+    category: 'Interpreter Support',
+    suburb: 'Melbourne',
+    languages: ['English', 'Mandarin', 'Arabic', 'Hindi', 'Dari'],
+    shortDescription: 'Example support desk for arranging language help before appointments.',
+    contactType: 'Email enquiry',
+    availability: 'Weekdays',
+  },
+  {
+    id: 'service-womens-wellbeing',
+    name: "Women's Wellbeing Clinic",
+    category: "Women's Health",
+    suburb: 'Springvale',
+    languages: ['English', 'Vietnamese'],
+    shortDescription: 'Example service for preventive checks and culturally safe wellbeing support.',
+    contactType: 'Phone booking',
+    availability: 'Tuesday to Friday',
+  },
+  {
+    id: 'service-wellbeing-centre',
+    name: 'Migrant Wellbeing Support Centre',
+    category: 'Mental Health Support',
+    suburb: 'Footscray',
+    languages: ['English', 'Arabic', 'Somali'],
+    shortDescription: 'Example wellbeing service for counselling pathways and community support.',
+    contactType: 'Referral or enquiry',
+    availability: 'Weekdays',
+  },
+  {
+    id: 'service-migrant-family-support',
+    name: 'Family Settlement Health Link',
+    category: 'Migrant Support Organisation',
+    suburb: 'Noble Park',
+    languages: ['English', 'Hindi', 'Punjabi'],
+    shortDescription: 'Example settlement support service for families navigating local health systems.',
+    contactType: 'Online enquiry',
+    availability: 'Monday, Wednesday, Friday',
+  },
+]
+
+export function findServicesByIds(ids) {
+  return healthServices.filter((service) => ids.includes(service.id))
+}

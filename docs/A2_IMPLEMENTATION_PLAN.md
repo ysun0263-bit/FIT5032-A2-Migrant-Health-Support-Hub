@@ -484,3 +484,84 @@ Phase 1 verification:
 | `npm list vue` | Passed; verified Vue `3.5.40`. |
 | `npm list vue-router` | Passed; verified Vue Router `4.6.4`. |
 | `git status --short` | To be checked at Phase 1 handoff. |
+
+## 15. Phase 2 Actual Implementation Baseline
+
+Phase 2 implemented BR B.1 validation and BR B.2 dynamic data/data structures. It did not implement full authentication, role-based access control, aggregated ratings, Firebase, backend storage, maps, email delivery, or later assignment categories.
+
+Actual data files:
+
+- `src/data/healthResources.js`: 10 original demonstration health resources for migrant communities in Australia.
+- `src/data/healthServices.js`: 6 original demonstration services with category, suburb, languages, contact type, and availability.
+- `src/data/healthEvents.js`: 6 original demonstration events with date, time, location, language, capacity, and registration status.
+
+Actual utility and composable files:
+
+- `src/utils/date.js`: local date formatting and past-date comparison without relying on UTC `toISOString()` splitting for validation.
+- `src/utils/validation.js`: appointment form validation rules.
+- `src/utils/storage.js`: Local Storage read/write wrapper with safe fallback for missing or corrupted JSON.
+- `src/utils/ids.js`: booking ID helper using `crypto.randomUUID()` with a fallback.
+- `src/composables/useAppointments.js`: appointment state, Local Storage persistence, add, delete, and reload functions.
+
+Actual Local Storage key:
+
+| Key | Purpose |
+| --- | --- |
+| `migrantHealthHub.appointments` | Stores demonstration appointment requests saved on the current browser/device only. |
+
+Actual appointment data structure:
+
+```js
+{
+  id: "booking-...",
+  userId: null,
+  fullName: "Example User",
+  email: "user@example.com",
+  preferredLanguage: "English",
+  supportTopic: "Finding a GP",
+  preferredDate: "2026-08-20",
+  preferredTime: "10:00",
+  contactPreference: "Email",
+  notes: "Optional demonstration note",
+  status: "pending",
+  createdAt: "2026-07-23T00:00:00.000Z"
+}
+```
+
+The `userId` field is intentionally `null` in Phase 2 so Phase 3 can connect appointments to real authenticated users without changing the appointment shape.
+
+Actual validation rules:
+
+- `fullName`: required after trim; minimum 2 characters.
+- `email`: required after trim; must match a reasonable email format.
+- `preferredLanguage`: required selection.
+- `supportTopic`: required selection.
+- `preferredDate`: required; cannot be earlier than the user's local current date; today is allowed.
+- `preferredTime`: required.
+- `contactPreference`: required radio selection.
+- `notes`: optional; trim-aware; maximum 500 characters.
+
+Actual search and filter design:
+
+- Health resource keyword search checks `title`, `summary`, and `topic`.
+- Search input is trimmed and case-insensitive.
+- Topic, language, and service type filters can be combined.
+- Results update immediately through Vue computed state.
+- The page displays current result count and total count.
+- A Reset Filters button clears search and all filters.
+- Empty state appears when no resources match.
+- Resource cards link to `/resources/:id` using the real resource ID.
+- Resource detail uses `route.params.id`; invalid IDs show a clear Resource not found state.
+- Related services are matched from service data by `relatedServiceIds`.
+
+Phase 2 verification:
+
+| Command/check | Result |
+| --- | --- |
+| `npm install` | Passed; dependencies already up to date; 0 vulnerabilities. |
+| `npm run build` | First sandbox run failed with `Error: spawn EPERM`; rerun with permission passed. Final rerun passed. |
+| `npm list vue` | Passed; Vue `3.5.40`. |
+| `npm list vue-router` | Passed; Vue Router `4.6.4`. |
+| `rg "v-html|innerHTML" src` | No source matches. |
+| `rg "localStorage" src` | Local Storage usage is centralised in `src/utils/storage.js`. |
+| Code-level logic check | Confirmed 10 resources, combined filtering, detail lookup, invalid detail lookup, invalid email rejection, past-date rejection, and corrupted Local Storage JSON fallback. |

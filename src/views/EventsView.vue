@@ -1,25 +1,13 @@
 <script setup>
-import FeatureCard from '../components/FeatureCard.vue'
+import { computed } from 'vue'
+import EventCard from '../components/EventCard.vue'
 import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { healthEvents } from '../data/healthEvents'
 
-const events = [
-  {
-    title: 'Health system orientation',
-    text: 'A sample workshop for new arrivals learning how to access GPs, pharmacies, and interpreters.',
-    tag: 'Workshop',
-  },
-  {
-    title: 'Wellbeing conversation circle',
-    text: 'A sample community event focused on social connection and mental wellbeing support pathways.',
-    tag: 'Community',
-  },
-  {
-    title: 'Preparing for appointments',
-    text: 'A sample session about questions to ask, documents to bring, and follow-up planning.',
-    tag: 'Information',
-  },
-]
+const sortedEvents = computed(() =>
+  [...healthEvents].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)),
+)
 </script>
 
 <template>
@@ -28,17 +16,11 @@ const events = [
       level="h1"
       eyebrow="Events"
       title="Community health events"
-      text="This page displays example event cards only. Event registration will be considered in a later phase."
+      text="Events are rendered from JavaScript data and sorted by date. Registration buttons remain disabled because formal registration is not part of Phase 2."
     />
     <div class="card-grid three">
-      <FeatureCard
-        v-for="event in events"
-        :key="event.title"
-        :title="event.title"
-        :text="event.text"
-        :tag="event.tag"
-      />
+      <EventCard v-for="event in sortedEvents" :key="event.id" :event="event" />
     </div>
-    <PlaceholderNotice text="Formal event registration is not implemented in Phase 1." />
+    <PlaceholderNotice text="Formal event registration is not implemented in Phase 2." />
   </section>
 </template>

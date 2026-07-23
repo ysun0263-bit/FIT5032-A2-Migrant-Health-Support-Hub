@@ -58,8 +58,20 @@
   }
 
   .card-grid.three,
-  .form-grid {
+  .form-grid,
+  .filter-grid,
+  .confirmation-grid,
+  .detail-facts {
     grid-template-columns: 1fr;
+  }
+
+  .result-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .result-toolbar button {
+    width: 100%;
   }
 }
 

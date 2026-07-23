@@ -1,24 +1,31 @@
 <script setup>
-import FeatureCard from '../components/FeatureCard.vue'
+import { computed, ref } from 'vue'
+import ServiceCard from '../components/ServiceCard.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { healthServices } from '../data/healthServices'
 
-const services = [
-  {
-    title: 'Community clinic support',
-    text: 'Example local clinic card for GP referrals, health checks, and care navigation.',
-    tag: 'Clinic',
-  },
-  {
-    title: 'Interpreter pathway',
-    text: 'Example service card for language support when booking or attending health appointments.',
-    tag: 'Language',
-  },
-  {
-    title: 'Settlement health guidance',
-    text: 'Example community support card for new arrivals learning how Australian health services work.',
-    tag: 'Community',
-  },
-]
+const selectedCategory = ref('')
+const selectedLanguage = ref('')
+
+const categories = computed(() => sortedUnique(healthServices.map((service) => service.category)))
+const languages = computed(() =>
+  sortedUnique(healthServices.flatMap((service) => service.languages)),
+)
+
+const filteredServices = computed(() =>
+  healthServices.filter((service) => {
+    const matchesCategory =
+      !selectedCategory.value || service.category === selectedCategory.value
+    const matchesLanguage =
+      !selectedLanguage.value || service.languages.includes(selectedLanguage.value)
+
+    return matchesCategory && matchesLanguage
+  }),
+)
+
+function sortedUnique(values) {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b))
+}
 </script>
 
 <template>
@@ -27,16 +34,35 @@ const services = [
       level="h1"
       eyebrow="Find Services"
       title="Local service information"
-      text="Example cards show the planned service directory layout. Real nearby-service logic is not part of Phase 1."
+      text="Service cards are rendered from JavaScript data. Filters are local demonstration controls and do not use a map or external API."
     />
+
+    <form class="search-panel" aria-label="Service filters" @submit.prevent>
+      <div class="filter-grid">
+        <label for="service-category">
+          Category
+          <select id="service-category" v-model="selectedCategory">
+            <option value="">All categories</option>
+            <option v-for="category in categories" :key="category" :value="category">
+              {{ category }}
+            </option>
+          </select>
+        </label>
+        <label for="service-language">
+          Language
+          <select id="service-language" v-model="selectedLanguage">
+            <option value="">All languages</option>
+            <option v-for="language in languages" :key="language" :value="language">
+              {{ language }}
+            </option>
+          </select>
+        </label>
+      </div>
+      <p>{{ filteredServices.length }} of {{ healthServices.length }} services shown</p>
+    </form>
+
     <div class="card-grid three">
-      <FeatureCard
-        v-for="service in services"
-        :key="service.title"
-        :title="service.title"
-        :text="service.text"
-        :tag="service.tag"
-      />
+      <ServiceCard v-for="service in filteredServices" :key="service.id" :service="service" />
     </div>
   </section>
 </template>

@@ -172,3 +172,71 @@ textarea:disabled {
 .placeholder-notice p {
   margin: 0.25rem 0 0;
 }
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.card-meta span,
+.status-pill {
+  border-radius: 999px;
+  background: var(--color-soft);
+  color: var(--color-primary-dark);
+  font-size: 0.85rem;
+  font-weight: 750;
+  padding: 0.3rem 0.65rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  margin: 0.75rem 0;
+}
+
+.status-pill.muted {
+  background: #f3f4f6;
+  color: var(--color-muted);
+}
+
+.compact-list,
+.confirmation-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.compact-list div,
+.confirmation-grid div {
+  min-width: 0;
+}
+
+.compact-list dt,
+.confirmation-grid dt {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.compact-list dd,
+.confirmation-grid dd {
+  margin: 0.15rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.confirmation-panel {
+  border: 1px solid #86efac;
+  border-radius: var(--radius);
+  background: #f0fdf4;
+  box-shadow: 0 10px 30px rgb(22 101 52 / 8%);
+  padding: 1.25rem;
+}
+
+.confirmation-panel h2 {
+  margin-top: 0;
+}
+
+.confirmation-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
