@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { createId } from '../utils/ids.js'
 import { APPOINTMENTS_STORAGE_KEY, readStorageArray, writeStorageArray } from '../utils/storage.js'
+import { isAdmin } from '../stores/authStore.js'
 
 export function useAppointments() {
   const appointments = ref(readStorageArray(APPOINTMENTS_STORAGE_KEY))
@@ -44,7 +45,7 @@ export function useAppointments() {
   function updateAppointmentStatus(id, status) {
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'cancelled']
 
-    if (!allowedStatuses.includes(status)) {
+    if (!isAdmin.value || !allowedStatuses.includes(status)) {
       return false
     }
 

@@ -83,6 +83,11 @@
   .result-toolbar button {
     width: 100%;
   }
+
+  .distribution-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
 }
 
 @media (max-width: 575px) {

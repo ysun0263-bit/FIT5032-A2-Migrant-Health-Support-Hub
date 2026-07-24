@@ -1,10 +1,15 @@
 <script setup>
-defineProps({
+import RatingSummary from './RatingSummary.vue'
+import { useRatings } from '../stores/ratingStore.js'
+
+const props = defineProps({
   resource: {
     type: Object,
     required: true,
   },
 })
+
+const { getAverageRating, getRatingCount } = useRatings()
 </script>
 
 <template>
@@ -15,6 +20,11 @@ defineProps({
     </div>
     <h2>{{ resource.title }}</h2>
     <p>{{ resource.summary }}</p>
+    <RatingSummary
+      :average="getAverageRating(props.resource.id)"
+      :count="getRatingCount(props.resource.id)"
+      compact
+    />
     <dl class="compact-list">
       <div>
         <dt>Service type</dt>

@@ -663,3 +663,119 @@ The admin dashboard now displays:
 ### Front-end authentication limitations
 
 This authentication system is only for FIT5032 coursework demonstration. Accounts, hashes, salts, sessions, and appointments are stored in the current browser's Local Storage. A person with local device/browser access can inspect or modify Local Storage. This must be discussed in the later security reflection.
+
+## 17. Phase 4 Actual Implementation Baseline
+
+Phase 4 implemented BR C.3 aggregated ratings and strengthened BR C.4 client-side security controls. It does not implement a backend, Firebase, OAuth, email, maps, cloud deployment, or Assessment 3 categories.
+
+### Rating data structure
+
+```js
+{
+  id: "rating-...",
+  resourceId: "finding-a-gp",
+  userId: "user-...",
+  score: 4,
+  createdAt: "2026-07-24T00:00:00.000Z",
+  updatedAt: "2026-07-24T00:00:00.000Z"
+}
+```
+
+### Rating Local Storage key
+
+| Key | Purpose |
+| --- | --- |
+| `migrantHealthHub.ratings` | Stores per-resource rating records for the current browser/device coursework demo. |
+
+### Rating store/composable
+
+File: `src/stores/ratingStore.js`
+
+Provided functions:
+
+- `initialiseRatings()`
+- `useRatings()`
+- `getRatingsForResource(resourceId)`
+- `getUserRating(resourceId, userId)`
+- `submitOrUpdateRating(resourceId, userId, score)`
+- `getAverageRating(resourceId)`
+- `getRatingCount(resourceId)`
+- `getRatingDistribution(resourceId)`
+
+### Aggregated average calculation
+
+For each resource, valid scores are summed and divided by valid rating count. The displayed value is rounded to one decimal place. Invalid records are ignored during initialisation.
+
+Invalid ratings include:
+
+- score below 1
+- score above 5
+- non-integer score
+- unknown resourceId
+- unknown or inactive userId
+- duplicate user/resource records beyond the first valid record
+
+### Single-user update strategy
+
+Each user can have at most one rating per resource. Submitting another score for the same resource updates the existing record and changes `updatedAt`; it does not increase rating count.
+
+### Rating permissions
+
+- Guest users can view rating summary and distribution.
+- Guest users cannot submit ratings and see a Login to rate prompt.
+- Logged-in users and admins can rate resources.
+- `userId` must match `authStore.currentUser.id`.
+- The rating function rejects unknown users, inactive users, unknown resources, and invalid scores.
+
+### Resource integration
+
+- `ResourceCard.vue` displays average rating/count or `No ratings yet`.
+- `ResourceDetailView.vue` displays rating summary, distribution, and `RatingInput.vue`.
+- Invalid resource detail pages do not render the rating form.
+
+### Admin rating statistics
+
+Admin Dashboard now includes:
+
+- Total ratings
+- Rated resources
+- Overall average rating
+- Highest-rated resource
+- Most-rated resource
+
+### Security controls
+
+- No `v-html`, `innerHTML`, `outerHTML`, `document.write`, `eval`, or `new Function` are used in `src/`.
+- User content is displayed through Vue text interpolation.
+- Email, name, appointment notes, search, rating, status, and role values are validated or constrained.
+- Appointment delete and admin status update functions perform ownership/role checks.
+- Rating submit performs current-user and data integrity checks.
+- Session contains only `userId` and `createdAt`.
+- Passwords are hashed with PBKDF2 and random salt; ordinary user plain-text passwords are not stored.
+- Local Storage parsing failures return safe defaults.
+- No API keys or private tokens are intentionally included.
+
+### CSP decision
+
+`index.html` includes a basic meta Content Security Policy:
+
+```text
+default-src 'self';
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data:;
+object-src 'none';
+base-uri 'self';
+form-action 'self';
+connect-src 'self' ws: http://127.0.0.1:* http://localhost:*
+```
+
+`style-src 'unsafe-inline'` and localhost/websocket connection allowances are included to avoid breaking Vite development mode. Production deployments should configure final HTTP security headers at the server level because meta CSP is limited.
+
+### Remaining security limitations
+
+- This is still a pure front-end Local Storage demo.
+- Local Storage can be inspected and modified by a local browser/device user.
+- There is no trusted backend enforcing authentication, authorisation, or data integrity.
+- Fixed demo admin credentials are public coursework credentials and cannot be truly secret.
+- Production would require a backend API, server-side validation, server-side RBAC, secure database, HTTPS, HttpOnly/Secure/SameSite cookies, server security headers, key management, logging, and audit controls.

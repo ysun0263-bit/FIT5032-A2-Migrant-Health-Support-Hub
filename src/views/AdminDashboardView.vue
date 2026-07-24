@@ -9,9 +9,34 @@ import { useAppointments } from '../composables/useAppointments.js'
 import { healthEvents } from '../data/healthEvents'
 import { healthResources } from '../data/healthResources'
 import { getUsers, isAdmin } from '../stores/authStore.js'
+import { useRatings } from '../stores/ratingStore.js'
 
 const { appointments, updateAppointmentStatus } = useAppointments()
+const { ratings, getAverageRating, getRatingCount } = useRatings()
 const users = computed(() => getUsers())
+const ratedResources = computed(() =>
+  healthResources.filter((resource) => getRatingCount(resource.id) > 0),
+)
+const overallAverageRating = computed(() => {
+  const validRatings = ratings.value
+
+  if (!validRatings.length) {
+    return null
+  }
+
+  const total = validRatings.reduce((sum, rating) => sum + rating.score, 0)
+  return Math.round((total / validRatings.length) * 10) / 10
+})
+const highestRatedResource = computed(() => {
+  return ratedResources.value
+    .map((resource) => ({ resource, average: getAverageRating(resource.id) }))
+    .sort((a, b) => b.average - a.average || a.resource.title.localeCompare(b.resource.title))[0]
+})
+const mostRatedResource = computed(() => {
+  return ratedResources.value
+    .map((resource) => ({ resource, count: getRatingCount(resource.id) }))
+    .sort((a, b) => b.count - a.count || a.resource.title.localeCompare(b.resource.title))[0]
+})
 const metrics = computed(() => {
   const statusCount = (status) =>
     appointments.value.filter((appointment) => appointment.status === status).length
@@ -34,6 +59,27 @@ const metrics = computed(() => {
     { title: 'Completed appointments', text: `${statusCount('completed')}`, tag: 'Status' },
     { title: 'Total resources', text: `${healthResources.length}`, tag: 'Content' },
     { title: 'Total events', text: `${healthEvents.length}`, tag: 'Events' },
+    { title: 'Total ratings', text: `${ratings.value.length}`, tag: 'Ratings' },
+    { title: 'Rated resources', text: `${ratedResources.value.length}`, tag: 'Ratings' },
+    {
+      title: 'Overall average rating',
+      text: overallAverageRating.value ? `${overallAverageRating.value.toFixed(1)} / 5` : 'No ratings yet',
+      tag: 'Ratings',
+    },
+    {
+      title: 'Highest-rated resource',
+      text: highestRatedResource.value
+        ? `${highestRatedResource.value.resource.title} (${highestRatedResource.value.average.toFixed(1)})`
+        : 'No ratings yet',
+      tag: 'Ratings',
+    },
+    {
+      title: 'Most-rated resource',
+      text: mostRatedResource.value
+        ? `${mostRatedResource.value.resource.title} (${mostRatedResource.value.count})`
+        : 'No ratings yet',
+      tag: 'Ratings',
+    },
   ]
 })
 </script>

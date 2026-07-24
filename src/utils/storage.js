@@ -1,6 +1,7 @@
 export const APPOINTMENTS_STORAGE_KEY = 'migrantHealthHub.appointments'
 export const USERS_STORAGE_KEY = 'migrantHealthHub.users'
 export const SESSION_STORAGE_KEY = 'migrantHealthHub.session'
+export const RATINGS_STORAGE_KEY = 'migrantHealthHub.ratings'
 
 function getLocalStorage() {
   return typeof window !== 'undefined' ? window.localStorage : null

@@ -175,6 +175,10 @@ textarea {
   margin: 0;
 }
 
+.rating-section {
+  margin: 1.5rem 0;
+}
+
 .choice-group {
   display: flex;
   flex-wrap: wrap;
