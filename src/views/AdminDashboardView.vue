@@ -1,13 +1,41 @@
 <script setup>
+import { computed } from 'vue'
+import AdminAppointmentList from '../components/AdminAppointmentList.vue'
+import AdminUserList from '../components/AdminUserList.vue'
 import FeatureCard from '../components/FeatureCard.vue'
 import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { useAppointments } from '../composables/useAppointments.js'
+import { healthEvents } from '../data/healthEvents'
+import { healthResources } from '../data/healthResources'
+import { getUsers, isAdmin } from '../stores/authStore.js'
 
-const metrics = [
-  { title: 'Users', text: 'Static placeholder for future registered user count.', tag: '0 demo' },
-  { title: 'Appointments', text: 'Static placeholder for future booking request count.', tag: '0 demo' },
-  { title: 'Resources', text: 'Static placeholder for future managed resource count.', tag: '3 demo' },
-]
+const { appointments, updateAppointmentStatus } = useAppointments()
+const users = computed(() => getUsers())
+const metrics = computed(() => {
+  const statusCount = (status) =>
+    appointments.value.filter((appointment) => appointment.status === status).length
+
+  return [
+    { title: 'Total users', text: `${users.value.length}`, tag: 'Accounts' },
+    {
+      title: 'Standard users',
+      text: `${users.value.filter((user) => user.role === 'user').length}`,
+      tag: 'Users',
+    },
+    {
+      title: 'Admin users',
+      text: `${users.value.filter((user) => user.role === 'admin').length}`,
+      tag: 'Admins',
+    },
+    { title: 'Total appointments', text: `${appointments.value.length}`, tag: 'Bookings' },
+    { title: 'Pending appointments', text: `${statusCount('pending')}`, tag: 'Status' },
+    { title: 'Confirmed appointments', text: `${statusCount('confirmed')}`, tag: 'Status' },
+    { title: 'Completed appointments', text: `${statusCount('completed')}`, tag: 'Status' },
+    { title: 'Total resources', text: `${healthResources.length}`, tag: 'Content' },
+    { title: 'Total events', text: `${healthEvents.length}`, tag: 'Events' },
+  ]
+})
 </script>
 
 <template>
@@ -15,18 +43,34 @@ const metrics = [
     <SectionHeading
       level="h1"
       eyebrow="Admin Dashboard"
-      title="Administration placeholder"
-      text="This page provides the visual dashboard foundation. It does not implement real permissions or live data in Phase 1."
+      title="Administration"
+      text="Admin-only dashboard for viewing demonstration users, appointments, and content statistics."
     />
-    <div class="card-grid three">
-      <FeatureCard
-        v-for="metric in metrics"
-        :key="metric.title"
-        :title="metric.title"
-        :text="metric.text"
-        :tag="metric.tag"
+
+    <PlaceholderNotice text="Admin access is role-checked, but this is still a front-end Local Storage course demo, not production administration." />
+
+    <div v-if="isAdmin" class="page-stack">
+      <div class="card-grid three">
+        <FeatureCard
+          v-for="metric in metrics"
+          :key="metric.title"
+          :title="metric.title"
+          :text="metric.text"
+          :tag="metric.tag"
+        />
+      </div>
+
+      <AdminUserList :users="users" />
+      <AdminAppointmentList
+        :appointments="appointments"
+        :users="users"
+        @update-status="updateAppointmentStatus"
       />
     </div>
-    <PlaceholderNotice text="Admin role access control and real dashboard data will be implemented in later phases." />
+
+    <div v-else class="empty-state">
+      <h2>Admin role required</h2>
+      <p>Your current account does not have admin dashboard access.</p>
+    </div>
   </section>
 </template>

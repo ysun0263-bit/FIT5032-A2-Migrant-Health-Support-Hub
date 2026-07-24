@@ -4,6 +4,10 @@ defineProps({
     type: Array,
     required: true,
   },
+  emptyText: {
+    type: String,
+    default: 'No appointments are saved on this device yet.',
+  },
 })
 
 const emit = defineEmits(['delete'])
@@ -54,6 +58,6 @@ function requestDelete(appointment) {
       </article>
     </div>
 
-    <p v-else class="empty-state">No appointments are saved on this device yet.</p>
+    <p v-else class="empty-state">{{ emptyText }}</p>
   </section>
 </template>

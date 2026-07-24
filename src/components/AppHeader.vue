@@ -1,16 +1,16 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+import { currentUser, isAdmin, isAuthenticated, logout } from '../stores/authStore.js'
 
 const isMenuOpen = ref(false)
+const router = useRouter()
 
-const navItems = [
+const publicNavItems = [
   { label: 'Home', to: '/' },
   { label: 'Health Resources', to: '/resources' },
   { label: 'Find Services', to: '/services' },
-  { label: 'Appointments', to: '/appointments' },
   { label: 'Events', to: '/events' },
-  { label: 'Login', to: '/login' },
 ]
 
 function toggleMenu() {
@@ -19,6 +19,12 @@ function toggleMenu() {
 
 function closeMenu() {
   isMenuOpen.value = false
+}
+
+function handleLogout() {
+  logout()
+  closeMenu()
+  router.push('/')
 }
 
 function handleKeydown(event) {
@@ -62,7 +68,7 @@ onBeforeUnmount(() => {
 
       <div id="primary-navigation" class="nav-links" :class="{ 'is-open': isMenuOpen }">
         <RouterLink
-          v-for="item in navItems"
+          v-for="item in publicNavItems"
           :key="item.to"
           :to="item.to"
           class="nav-link"
@@ -70,6 +76,25 @@ onBeforeUnmount(() => {
         >
           {{ item.label }}
         </RouterLink>
+        <template v-if="isAuthenticated">
+          <RouterLink class="nav-link" to="/appointments" @click="closeMenu">
+            Appointments
+          </RouterLink>
+          <RouterLink class="nav-link" to="/profile" @click="closeMenu">
+            Profile
+          </RouterLink>
+          <RouterLink v-if="isAdmin" class="nav-link" to="/admin" @click="closeMenu">
+            Admin Dashboard
+          </RouterLink>
+          <span class="account-chip" :title="currentUser.fullName">
+            {{ currentUser.fullName }}
+          </span>
+          <button class="nav-action" type="button" @click="handleLogout">Logout</button>
+        </template>
+        <template v-else>
+          <RouterLink class="nav-link" to="/login" @click="closeMenu">Login</RouterLink>
+          <RouterLink class="nav-link" to="/register" @click="closeMenu">Register</RouterLink>
+        </template>
       </div>
     </nav>
   </header>

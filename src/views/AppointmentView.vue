@@ -1,13 +1,14 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import AppointmentList from '../components/AppointmentList.vue'
 import BookingConfirmation from '../components/BookingConfirmation.vue'
 import FormFieldError from '../components/FormFieldError.vue'
 import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
-import { useAppointments } from '../composables/useAppointments'
-import { formatLocalDate } from '../utils/date'
-import { NOTES_MAX_LENGTH, validateAppointmentForm } from '../utils/validation'
+import { useAppointments } from '../composables/useAppointments.js'
+import { currentUser } from '../stores/authStore.js'
+import { formatLocalDate } from '../utils/date.js'
+import { NOTES_MAX_LENGTH, validateAppointmentForm } from '../utils/validation.js'
 
 const languageOptions = ['English', 'Arabic', 'Mandarin', 'Hindi', 'Vietnamese', 'Dari']
 const supportTopics = [
@@ -46,6 +47,27 @@ const fieldRefs = {}
 const submittedBooking = ref(null)
 const hasSubmitted = ref(false)
 const { appointments, addAppointment, deleteAppointment } = useAppointments()
+const currentUserAppointments = computed(() =>
+  appointments.value.filter((appointment) => appointment.userId === currentUser.value?.id),
+)
+
+watch(
+  currentUser,
+  (user) => {
+    if (!user) {
+      return
+    }
+
+    if (!form.fullName) {
+      form.fullName = user.fullName
+    }
+
+    if (!form.email) {
+      form.email = user.email
+    }
+  },
+  { immediate: true },
+)
 
 function setFieldRef(field, element) {
   if (element) {
@@ -96,19 +118,21 @@ function handleSubmit() {
     return
   }
 
-  submittedBooking.value = addAppointment(form)
+  submittedBooking.value = addAppointment(form, currentUser.value.id)
   hasSubmitted.value = true
   resetForm()
 }
 
 function handleInput() {
+  hasSubmitted.value = false
+
   if (Object.keys(errors).length) {
     validateField()
   }
 }
 
 function handleDelete(id) {
-  deleteAppointment(id)
+  deleteAppointment(id, currentUser.value.id)
 
   if (submittedBooking.value?.id === id) {
     submittedBooking.value = null
@@ -274,6 +298,10 @@ function handleDelete(id) {
       <BookingConfirmation v-if="submittedBooking" :booking="submittedBooking" />
     </section>
 
-    <AppointmentList :appointments="appointments" @delete="handleDelete" />
+    <AppointmentList
+      :appointments="currentUserAppointments"
+      empty-text="You do not have any appointments saved on this device yet."
+      @delete="handleDelete"
+    />
   </div>
 </template>

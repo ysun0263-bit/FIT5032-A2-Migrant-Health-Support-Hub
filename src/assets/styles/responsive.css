@@ -53,6 +53,16 @@
     min-height: 44px;
   }
 
+  .account-chip {
+    max-width: 100%;
+  }
+
+  .nav-action {
+    justify-content: flex-start;
+    min-height: 44px;
+    width: 100%;
+  }
+
   .page-hero {
     padding-top: 2rem;
   }

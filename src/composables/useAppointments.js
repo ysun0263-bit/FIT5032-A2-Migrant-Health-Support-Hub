@@ -10,10 +10,10 @@ export function useAppointments() {
     writeStorageArray(APPOINTMENTS_STORAGE_KEY, nextAppointments)
   }
 
-  function addAppointment(form) {
+  function addAppointment(form, userId = null) {
     const appointment = {
       id: createId('booking'),
-      userId: null,
+      userId,
       fullName: form.fullName.trim(),
       email: form.email.trim(),
       preferredLanguage: form.preferredLanguage,
@@ -30,8 +30,30 @@ export function useAppointments() {
     return appointment
   }
 
-  function deleteAppointment(id) {
+  function deleteAppointment(id, ownerUserId = null) {
+    const target = appointments.value.find((appointment) => appointment.id === id)
+
+    if (!target || (ownerUserId && target.userId !== ownerUserId)) {
+      return false
+    }
+
     persist(appointments.value.filter((appointment) => appointment.id !== id))
+    return true
+  }
+
+  function updateAppointmentStatus(id, status) {
+    const allowedStatuses = ['pending', 'confirmed', 'completed', 'cancelled']
+
+    if (!allowedStatuses.includes(status)) {
+      return false
+    }
+
+    persist(
+      appointments.value.map((appointment) =>
+        appointment.id === id ? { ...appointment, status } : appointment,
+      ),
+    )
+    return true
   }
 
   function reloadAppointments() {
@@ -42,6 +64,7 @@ export function useAppointments() {
     appointments,
     addAppointment,
     deleteAppointment,
+    updateAppointmentStatus,
     reloadAppointments,
   }
 }

@@ -81,9 +81,32 @@
 }
 
 .nav-link:hover,
-.nav-link.router-link-active {
+.nav-link.router-link-active,
+.nav-action:hover {
   background: var(--color-soft);
   color: var(--color-primary-dark);
+}
+
+.nav-action {
+  min-height: auto;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  padding: 0.65rem 0.8rem;
+}
+
+.account-chip {
+  display: inline-block;
+  max-width: 14rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-primary-dark);
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 0.45rem 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .menu-toggle {

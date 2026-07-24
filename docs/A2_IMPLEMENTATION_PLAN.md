@@ -565,3 +565,101 @@ Phase 2 verification:
 | `rg "v-html|innerHTML" src` | No source matches. |
 | `rg "localStorage" src` | Local Storage usage is centralised in `src/utils/storage.js`. |
 | Code-level logic check | Confirmed 10 resources, combined filtering, detail lookup, invalid detail lookup, invalid email rejection, past-date rejection, and corrupted Local Storage JSON fallback. |
+
+## 16. Phase 3 Actual Implementation Baseline
+
+Phase 3 implemented BR C.1 authentication and BR C.2 role-based access control for the front-end coursework demo. It does not claim production-grade security and does not implement aggregated ratings or the full C.4 security reflection.
+
+### User data structure
+
+```js
+{
+  id: "user-...",
+  fullName: "Example User",
+  email: "user@example.com",
+  passwordHash: "...",
+  passwordSalt: "...",
+  role: "user",
+  createdAt: "2026-07-23T00:00:00.000Z",
+  active: true
+}
+```
+
+Plain-text passwords are not stored. `passwordHash` and `passwordSalt` are stored in Local Storage because this is a browser-only coursework demo.
+
+### Session data structure
+
+```js
+{
+  userId: "user-...",
+  createdAt: "2026-07-23T00:00:00.000Z"
+}
+```
+
+The session does not store password, role, hash, or salt. The current role is read from `migrantHealthHub.users`.
+
+### Password hash approach
+
+- File: `src/utils/password.js`
+- API: browser Web Crypto
+- Algorithm: PBKDF2
+- Hash: SHA-256
+- Iterations: `120000`
+- Salt: random 16-byte salt encoded as Base64
+- Stored values: `passwordHash` and `passwordSalt`
+- If Web Crypto is unavailable, registration/login hashing fails with a clear error rather than falling back to plain text.
+
+### Local Storage keys
+
+| Key | Purpose |
+| --- | --- |
+| `migrantHealthHub.users` | Demo user and admin accounts. |
+| `migrantHealthHub.session` | Current browser session with `userId` only. |
+| `migrantHealthHub.appointments` | Appointment requests, now linked to `userId` for new bookings. |
+
+### User and admin permissions
+
+| Role | Allowed | Restricted |
+| --- | --- | --- |
+| Guest | Home, resources, resource detail, services, events, login, register | Profile, appointments, admin dashboard |
+| User | Guest pages, profile, create/view/delete own appointments | Admin dashboard, other users' appointments |
+| Admin | Public pages, admin dashboard, all users list, all appointments list, appointment status updates | Password/hash/salt display or password modification |
+
+### Route guard design
+
+- `/profile`: `meta.requiresAuth`
+- `/appointments`: `meta.requiresAuth`
+- `/admin`: `meta.requiresAuth` and `meta.roles = ["admin"]`
+- `/unauthorized`: friendly access-denied page
+- Guests visiting protected routes redirect to `/login?redirect=...`
+- Logged-in users visiting `/login` or `/register` redirect to `/profile` or `/admin`
+- Standard users visiting `/admin` redirect to `/unauthorized`
+
+### Appointment userId connection
+
+- New appointments use `userId: currentUser.id`.
+- `fullName` and `email` are prefilled from the current user but remain editable for appointment contact details.
+- The trusted owner link comes from auth state, not form input.
+- Standard users only see appointments where `appointment.userId === currentUser.id`.
+- Delete operations re-check `userId` in the composable, not only through UI hiding.
+- Phase 2 appointments with `userId: null` are preserved. Standard users do not see them by default. Admin Dashboard displays them as `Unlinked demonstration appointment`.
+
+### Admin Dashboard
+
+The admin dashboard now displays:
+
+- Total users
+- Standard users
+- Admin users
+- Total appointments
+- Pending appointments
+- Confirmed appointments
+- Completed appointments
+- Total resources
+- Total events
+- User list without password fields
+- Appointment list with status update to `pending`, `confirmed`, `completed`, or `cancelled`
+
+### Front-end authentication limitations
+
+This authentication system is only for FIT5032 coursework demonstration. Accounts, hashes, salts, sessions, and appointments are stored in the current browser's Local Storage. A person with local device/browser access can inspect or modify Local Storage. This must be discussed in the later security reflection.

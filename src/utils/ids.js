@@ -1,6 +1,6 @@
 export function createId(prefix) {
-  if (window.crypto?.randomUUID) {
-    return `${prefix}-${window.crypto.randomUUID()}`
+  if (globalThis.crypto?.randomUUID) {
+    return `${prefix}-${globalThis.crypto.randomUUID()}`
   }
 
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
