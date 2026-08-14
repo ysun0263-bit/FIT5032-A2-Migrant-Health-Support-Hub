@@ -24,6 +24,8 @@ import { timestampToIso } from '../utils/timestamps.js'
 const state = reactive({
   profile: null,
   users: [],
+  usersLoading: false,
+  usersError: '',
   ready: false,
   error: '',
 })
@@ -35,6 +37,8 @@ export const currentUser = computed(() => state.profile)
 export const isAuthenticated = computed(() => Boolean(state.profile?.active))
 export const isAdmin = computed(() => state.profile?.role === 'admin' && state.profile?.active)
 export const authReady = computed(() => state.ready)
+export const adminUsersLoading = computed(() => state.usersLoading)
+export const adminUsersError = computed(() => state.usersError)
 
 function publicProfile(uid, data) {
   return {
@@ -67,6 +71,8 @@ function stopAdminUsersSubscription() {
 function startAdminUsersSubscription(profile) {
   stopAdminUsersSubscription()
   state.users = [profile]
+  state.usersError = ''
+  state.usersLoading = profile.role === 'admin'
 
   if (profile.role !== 'admin') {
     return
@@ -78,9 +84,11 @@ function startAdminUsersSubscription(profile) {
       state.users = snapshot.docs
         .map((profileDocument) => publicProfile(profileDocument.id, profileDocument.data()))
         .filter((user) => ['user', 'admin'].includes(user.role))
+      state.usersLoading = false
     },
     () => {
-      state.error = 'The user directory could not be loaded.'
+      state.usersError = 'The user directory could not be loaded.'
+      state.usersLoading = false
       state.users = [profile]
     },
   )
@@ -90,6 +98,8 @@ function clearCurrentUser() {
   stopAdminUsersSubscription()
   state.profile = null
   state.users = []
+  state.usersLoading = false
+  state.usersError = ''
 }
 
 function profileError(code, message) {

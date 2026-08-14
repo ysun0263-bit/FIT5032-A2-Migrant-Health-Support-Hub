@@ -3,12 +3,16 @@ import { computed } from 'vue'
 import AdminAppointmentList from '../components/AdminAppointmentList.vue'
 import AdminUserList from '../components/AdminUserList.vue'
 import FeatureCard from '../components/FeatureCard.vue'
-import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
 import { useAppointments } from '../composables/useAppointments.js'
 import { healthEvents } from '../data/healthEvents'
 import { healthResources } from '../data/healthResources'
-import { getUsers, isAdmin } from '../stores/authStore.js'
+import {
+  adminUsersError,
+  adminUsersLoading,
+  getUsers,
+  isAdmin,
+} from '../stores/authStore.js'
 import { useRatings } from '../stores/ratingStore.js'
 
 const {
@@ -47,7 +51,11 @@ const metrics = computed(() => {
     appointments.value.filter((appointment) => appointment.status === status).length
 
   return [
-    { title: 'Total users', text: `${users.value.length}`, tag: 'Accounts' },
+    {
+      title: 'Total users',
+      text: adminUsersLoading.value ? 'Loading...' : `${users.value.length}`,
+      tag: 'Accounts',
+    },
     {
       title: 'Standard users',
       text: `${users.value.filter((user) => user.role === 'user').length}`,
@@ -106,7 +114,13 @@ const metrics = computed(() => {
       text="Admin-only dashboard for viewing demonstration users, appointments, and content statistics."
     />
 
-    <PlaceholderNotice text="Users, appointments, and ratings are loaded in real time from Cloud Firestore. Interactive table controls and exports are planned for Phase 2B." />
+    <div class="placeholder-notice">
+      <strong>Live administration tools</strong>
+      <p>
+        Users, appointments, and ratings are loaded in real time from Cloud Firestore. Admin
+        tables support combined search, sorting, pagination, and filtered CSV/PDF exports.
+      </p>
+    </div>
 
     <p v-if="ratingsError" class="form-status error" role="alert">{{ ratingsError }}</p>
 
@@ -121,10 +135,13 @@ const metrics = computed(() => {
         />
       </div>
 
-      <AdminUserList :users="users" />
+      <AdminUserList
+        :users="users"
+        :loading="adminUsersLoading"
+        :error="adminUsersError"
+      />
       <AdminAppointmentList
         :appointments="appointments"
-        :users="users"
         :loading="appointmentsLoading"
         :error="appointmentsError"
         @update-status="updateAppointmentStatus"

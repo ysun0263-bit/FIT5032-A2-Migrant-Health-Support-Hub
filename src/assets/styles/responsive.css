@@ -80,6 +80,22 @@
     flex-direction: column;
   }
 
+  .table-section-heading,
+  .data-table-toolbar,
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-table-toolbar label {
+    flex-basis: auto;
+  }
+
+  .table-section-heading .action-row,
+  .pagination-controls {
+    width: 100%;
+  }
+
   .result-toolbar button {
     width: 100%;
   }
