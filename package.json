@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "emulators": "firebase emulators:start --project demo-migrant-health-hub",
     "test:rules": "firebase emulators:exec --only firestore --project demo-migrant-health-hub \"node --test tests/firestore.rules.test.js\"",
-    "test:unit": "node --test tests/dataTable.test.js tests/exportCsv.test.js tests/exportPdf.test.js",
+    "test:unit": "node --test tests/dataTable.test.js tests/exportCsv.test.js tests/exportPdf.test.js tests/mapboxService.test.js",
     "seed:emulator": "node tests/seedAdminTablesEmulator.js"
   },
   "dependencies": {
@@ -17,6 +17,7 @@
     "firebase": "^12.17.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "mapbox-gl": "^3.28.1",
     "vite": "^7.0.0",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"

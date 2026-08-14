@@ -2,6 +2,7 @@
   .page-hero,
   .split-section,
   .detail-layout,
+  .service-map-layout,
   .footer-inner {
     grid-template-columns: 1fr;
   }
@@ -70,6 +71,8 @@
   .card-grid.three,
   .form-grid,
   .filter-grid,
+  .service-search-form,
+  .route-summary-grid,
   .confirmation-grid,
   .detail-facts {
     grid-template-columns: 1fr;
@@ -78,6 +81,14 @@
   .result-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .service-search-form > p {
+    grid-column: auto;
+  }
+
+  .service-map {
+    height: 400px;
   }
 
   .table-section-heading,
