@@ -9,7 +9,7 @@ const props = defineProps({
   },
 })
 
-const { getAverageRating, getRatingCount } = useRatings()
+const { ratingsLoading, getAverageRating, getRatingCount } = useRatings()
 </script>
 
 <template>
@@ -23,6 +23,7 @@ const { getAverageRating, getRatingCount } = useRatings()
     <RatingSummary
       :average="getAverageRating(props.resource.id)"
       :count="getRatingCount(props.resource.id)"
+      :loading="ratingsLoading"
       compact
     />
     <dl class="compact-list">

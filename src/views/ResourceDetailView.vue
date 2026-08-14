@@ -19,6 +19,8 @@ const relatedServices = computed(() =>
   resource.value ? findServicesByIds(resource.value.relatedServiceIds) : [],
 )
 const {
+  ratingsLoading,
+  ratingsError,
   getAverageRating,
   getRatingCount,
   getRatingDistribution,
@@ -35,7 +37,7 @@ const userRating = computed(() =>
 )
 
 function handleRatingSubmit(score) {
-  submitOrUpdateRating(resource.value.id, currentUser.value.id, score)
+  return submitOrUpdateRating(resource.value.id, currentUser.value.id, score)
 }
 </script>
 
@@ -83,13 +85,23 @@ function handleRatingSubmit(score) {
 
         <section class="rating-section" aria-labelledby="resource-rating-title">
           <h2 id="resource-rating-title">Resource rating</h2>
-          <RatingSummary :average="averageRating" :count="ratingCount" />
-          <RatingDistribution :distribution="ratingDistribution" :total="ratingCount" />
+          <p v-if="ratingsError" class="form-status error" role="alert">{{ ratingsError }}</p>
+          <RatingSummary
+            :average="averageRating"
+            :count="ratingCount"
+            :loading="ratingsLoading"
+          />
+          <RatingDistribution
+            v-if="!ratingsLoading"
+            :distribution="ratingDistribution"
+            :total="ratingCount"
+          />
 
           <RatingInput
             v-if="isAuthenticated"
             :current-score="userRating?.score"
-            @submit="handleRatingSubmit"
+            :disabled="ratingsLoading"
+            :submit-rating="handleRatingSubmit"
           />
           <div v-else class="placeholder-notice">
             <strong>Login to rate this resource</strong>

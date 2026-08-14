@@ -6,7 +6,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function ownsProfile(userId) {
+    function isOwner(userId) {
       return signedIn() && request.auth.uid == userId;
     }
 
@@ -18,7 +18,7 @@ service cloud.firestore {
     }
 
     function validNewUser(userId) {
-      return ownsProfile(userId)
+      return isOwner(userId)
         && request.resource.data.keys().hasAll([
           'uid', 'fullName', 'email', 'role', 'active', 'createdAt', 'updatedAt'
         ])
@@ -51,11 +51,106 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
     }
 
+    function validAppointmentStatus(status) {
+      return status in ['pending', 'confirmed', 'completed', 'cancelled'];
+    }
+
+    function validNewAppointment(appointmentId) {
+      return signedIn()
+        && request.resource.data.keys().hasAll([
+          'id', 'userId', 'fullName', 'email', 'language', 'supportTopic',
+          'preferredDate', 'preferredTime', 'contactPreference', 'notes',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'id', 'userId', 'fullName', 'email', 'language', 'supportTopic',
+          'preferredDate', 'preferredTime', 'contactPreference', 'notes',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.id == appointmentId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() >= 2
+        && request.resource.data.fullName.size() <= 80
+        && request.resource.data.email is string
+        && request.resource.data.email.size() >= 3
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.language is string
+        && request.resource.data.language.size() >= 1
+        && request.resource.data.language.size() <= 80
+        && request.resource.data.supportTopic is string
+        && request.resource.data.supportTopic.size() >= 1
+        && request.resource.data.supportTopic.size() <= 120
+        && request.resource.data.preferredDate is string
+        && request.resource.data.preferredDate.size() == 10
+        && request.resource.data.preferredTime is string
+        && request.resource.data.preferredTime.size() >= 4
+        && request.resource.data.preferredTime.size() <= 5
+        && request.resource.data.contactPreference is string
+        && request.resource.data.contactPreference in ['Email', 'Phone call', 'SMS']
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 500
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function validAdminAppointmentUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'updatedAt'])
+        && validAppointmentStatus(request.resource.data.status)
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function validRatingScore(score) {
+      return score is int && score >= 1 && score <= 5;
+    }
+
+    function validNewRating(ratingId) {
+      return signedIn()
+        && request.resource.data.keys().hasAll([
+          'userId', 'resourceId', 'score', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'userId', 'resourceId', 'score', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.resourceId is string
+        && request.resource.data.resourceId.size() >= 1
+        && request.resource.data.resourceId.size() <= 120
+        && ratingId == request.auth.uid + '__' + request.resource.data.resourceId
+        && validRatingScore(request.resource.data.score)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function validRatingUpdate() {
+      return isOwner(resource.data.userId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['score', 'updatedAt'])
+        && validRatingScore(request.resource.data.score)
+        && request.resource.data.updatedAt == request.time;
+    }
+
     match /users/{userId} {
-      allow get: if ownsProfile(userId) || isAdmin();
+      allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if validNewUser(userId);
-      allow update: if ownsProfile(userId) && validOwnerUpdate();
+      allow update: if isOwner(userId) && validOwnerUpdate();
+      allow delete: if false;
+    }
+
+    match /appointments/{appointmentId} {
+      allow create: if validNewAppointment(appointmentId);
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow update: if isAdmin() && validAdminAppointmentUpdate();
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    match /ratings/{ratingId} {
+      allow read: if true;
+      allow create: if validNewRating(ratingId);
+      allow update: if validRatingUpdate();
       allow delete: if false;
     }
 

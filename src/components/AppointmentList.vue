@@ -8,13 +8,21 @@ defineProps({
     type: String,
     default: 'No appointments are saved on this device yet.',
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  error: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['delete'])
 
 function requestDelete(appointment) {
   const confirmed = window.confirm(
-    `Delete demonstration booking ${appointment.id} from this device?`,
+    `Delete appointment ${appointment.id}?`,
   )
 
   if (confirmed) {
@@ -26,15 +34,17 @@ function requestDelete(appointment) {
 <template>
   <section class="content-section" aria-labelledby="saved-appointments-title">
     <div class="section-heading">
-      <p class="eyebrow">Appointments saved on this device</p>
-      <h2 id="saved-appointments-title">Demonstration appointment list</h2>
+      <p class="eyebrow">Your appointments</p>
+      <h2 id="saved-appointments-title">Appointment list</h2>
       <p>
-        These records are linked to the signed-in Firebase user but stored only in this browser's
-        Local Storage until Phase 2. They are not medical records.
+        These records are stored in Cloud Firestore and are visible only to their owner and active
+        administrators. They are not medical records.
       </p>
     </div>
 
-    <div v-if="appointments.length" class="appointment-list">
+    <p v-if="loading" class="empty-state" role="status">Loading appointments…</p>
+    <p v-else-if="error" class="form-status error" role="alert">{{ error }}</p>
+    <div v-else-if="appointments.length" class="appointment-list">
       <article v-for="appointment in appointments" :key="appointment.id" class="summary-panel">
         <div>
           <h3>{{ appointment.supportTopic }}</h3>
@@ -54,7 +64,7 @@ function requestDelete(appointment) {
             <dd>{{ appointment.status }}</dd>
           </div>
         </dl>
-        <button type="button" @click="requestDelete(appointment)">Delete demo booking</button>
+        <button type="button" @click="requestDelete(appointment)">Delete appointment</button>
       </article>
     </div>
 

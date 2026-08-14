@@ -11,8 +11,13 @@ import { healthResources } from '../data/healthResources'
 import { getUsers, isAdmin } from '../stores/authStore.js'
 import { useRatings } from '../stores/ratingStore.js'
 
-const { appointments, updateAppointmentStatus } = useAppointments()
-const { ratings, getAverageRating, getRatingCount } = useRatings()
+const {
+  appointments,
+  appointmentsLoading,
+  appointmentsError,
+  updateAppointmentStatus,
+} = useAppointments()
+const { ratings, ratingsLoading, ratingsError, getAverageRating, getRatingCount } = useRatings()
 const users = computed(() => getUsers())
 const ratedResources = computed(() =>
   healthResources.filter((resource) => getRatingCount(resource.id) > 0),
@@ -53,13 +58,21 @@ const metrics = computed(() => {
       text: `${users.value.filter((user) => user.role === 'admin').length}`,
       tag: 'Admins',
     },
-    { title: 'Total appointments', text: `${appointments.value.length}`, tag: 'Bookings' },
+    {
+      title: 'Total appointments',
+      text: appointmentsLoading.value ? 'Loading…' : `${appointments.value.length}`,
+      tag: 'Bookings',
+    },
     { title: 'Pending appointments', text: `${statusCount('pending')}`, tag: 'Status' },
     { title: 'Confirmed appointments', text: `${statusCount('confirmed')}`, tag: 'Status' },
     { title: 'Completed appointments', text: `${statusCount('completed')}`, tag: 'Status' },
     { title: 'Total resources', text: `${healthResources.length}`, tag: 'Content' },
     { title: 'Total events', text: `${healthEvents.length}`, tag: 'Events' },
-    { title: 'Total ratings', text: `${ratings.value.length}`, tag: 'Ratings' },
+    {
+      title: 'Total ratings',
+      text: ratingsLoading.value ? 'Loading…' : `${ratings.value.length}`,
+      tag: 'Ratings',
+    },
     { title: 'Rated resources', text: `${ratedResources.value.length}`, tag: 'Ratings' },
     {
       title: 'Overall average rating',
@@ -93,7 +106,9 @@ const metrics = computed(() => {
       text="Admin-only dashboard for viewing demonstration users, appointments, and content statistics."
     />
 
-    <PlaceholderNotice text="User accounts are loaded from Firestore. Appointments and ratings remain browser-based demonstration data until Phase 2." />
+    <PlaceholderNotice text="Users, appointments, and ratings are loaded in real time from Cloud Firestore. Interactive table controls and exports are planned for Phase 2B." />
+
+    <p v-if="ratingsError" class="form-status error" role="alert">{{ ratingsError }}</p>
 
     <div v-if="isAdmin" class="page-stack">
       <div class="card-grid three">
@@ -110,6 +125,8 @@ const metrics = computed(() => {
       <AdminAppointmentList
         :appointments="appointments"
         :users="users"
+        :loading="appointmentsLoading"
+        :error="appointmentsError"
         @update-status="updateAppointmentStatus"
       />
     </div>

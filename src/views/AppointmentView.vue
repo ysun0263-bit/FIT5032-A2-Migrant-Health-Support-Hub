@@ -46,7 +46,13 @@ const errors = reactive({})
 const fieldRefs = {}
 const submittedBooking = ref(null)
 const hasSubmitted = ref(false)
-const { appointments, addAppointment, deleteAppointment } = useAppointments()
+const {
+  appointments,
+  appointmentsLoading,
+  appointmentsError,
+  addAppointment,
+  deleteAppointment,
+} = useAppointments()
 const currentUserAppointments = computed(() =>
   appointments.value.filter((appointment) => appointment.userId === currentUser.value?.id),
 )
@@ -110,7 +116,7 @@ function resetForm() {
   })
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   hasSubmitted.value = false
 
   if (!validateField()) {
@@ -118,9 +124,13 @@ function handleSubmit() {
     return
   }
 
-  submittedBooking.value = addAppointment(form, currentUser.value.id)
-  hasSubmitted.value = true
-  resetForm()
+  try {
+    submittedBooking.value = await addAppointment(form)
+    hasSubmitted.value = true
+    resetForm()
+  } catch {
+    hasSubmitted.value = false
+  }
 }
 
 function handleInput() {
@@ -131,10 +141,10 @@ function handleInput() {
   }
 }
 
-function handleDelete(id) {
-  deleteAppointment(id, currentUser.value.id)
+async function handleDelete(id) {
+  const deleted = await deleteAppointment(id)
 
-  if (submittedBooking.value?.id === id) {
+  if (deleted && submittedBooking.value?.id === id) {
     submittedBooking.value = null
   }
 }
@@ -147,7 +157,7 @@ function handleDelete(id) {
         level="h1"
         eyebrow="Appointments"
         title="Request support appointment"
-        text="Submit a demonstration booking request with validation. Bookings are linked to your Firebase UID but remain saved only in this browser until Phase 2."
+        text="Submit a support booking request linked to your Firebase account and stored securely in Cloud Firestore."
       />
 
       <PlaceholderNotice text="Do not enter sensitive medical details. Notes are for coursework demonstration only and are limited to 500 characters." />
@@ -300,7 +310,9 @@ function handleDelete(id) {
 
     <AppointmentList
       :appointments="currentUserAppointments"
-      empty-text="You do not have any appointments saved on this device yet."
+      :loading="appointmentsLoading"
+      :error="appointmentsError"
+      empty-text="You do not have any appointments yet."
       @delete="handleDelete"
     />
   </div>

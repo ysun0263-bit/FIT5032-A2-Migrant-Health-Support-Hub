@@ -6,7 +6,7 @@ import SectionHeading from '../components/SectionHeading.vue'
 import { useAppointments } from '../composables/useAppointments.js'
 import { currentUser } from '../stores/authStore.js'
 
-const { appointments, deleteAppointment } = useAppointments()
+const { appointments, appointmentsLoading, appointmentsError, deleteAppointment } = useAppointments()
 const userAppointments = computed(() =>
   appointments.value.filter((appointment) => appointment.userId === currentUser.value?.id),
 )
@@ -15,7 +15,7 @@ const pendingAppointments = computed(
 )
 
 function handleDelete(id) {
-  deleteAppointment(id, currentUser.value.id)
+  deleteAppointment(id)
 }
 </script>
 
@@ -29,7 +29,7 @@ function handleDelete(id) {
         text="This page shows the current authenticated user's demonstration account information."
       />
 
-      <PlaceholderNotice text="Your identity profile is stored in Firebase. Appointments remain demonstration records in this browser until the Phase 2 data migration." />
+      <PlaceholderNotice text="Your identity profile and appointments are stored in Firebase. Do not enter sensitive medical details in appointment notes." />
 
       <div class="summary-panel">
         <h2>Account details</h2>
@@ -64,6 +64,8 @@ function handleDelete(id) {
 
     <AppointmentList
       :appointments="userAppointments"
+      :loading="appointmentsLoading"
+      :error="appointmentsError"
       empty-text="You do not have any appointments linked to this account yet."
       @delete="handleDelete"
     />

@@ -8,6 +8,14 @@ defineProps({
     type: Array,
     required: true,
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  error: {
+    type: String,
+    default: '',
+  },
 })
 
 defineEmits(['update-status'])
@@ -26,7 +34,9 @@ function userLabel(appointment, users) {
 <template>
   <section class="summary-panel" aria-labelledby="admin-appointments-title">
     <h2 id="admin-appointments-title">Appointments</h2>
-    <div class="responsive-table" role="region" aria-label="Appointment list">
+    <p v-if="loading" class="empty-state" role="status">Loading appointments…</p>
+    <p v-else-if="error" class="form-status error" role="alert">{{ error }}</p>
+    <div v-else class="responsive-table" role="region" aria-label="Appointment list">
       <table>
         <thead>
           <tr>
@@ -65,6 +75,8 @@ function userLabel(appointment, users) {
         </tbody>
       </table>
     </div>
-    <p v-if="!appointments.length" class="empty-state">No appointments are saved yet.</p>
+    <p v-if="!loading && !error && !appointments.length" class="empty-state">
+      No appointments are saved yet.
+    </p>
   </section>
 </template>

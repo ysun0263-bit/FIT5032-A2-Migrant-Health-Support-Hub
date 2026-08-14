@@ -19,6 +19,7 @@ import {
 } from 'firebase/firestore'
 import { firebaseAuth, firestoreDb } from '../firebase/firebase.js'
 import { normaliseEmail } from '../utils/authValidation.js'
+import { timestampToIso } from '../utils/timestamps.js'
 
 const state = reactive({
   profile: null,
@@ -34,14 +35,6 @@ export const currentUser = computed(() => state.profile)
 export const isAuthenticated = computed(() => Boolean(state.profile?.active))
 export const isAdmin = computed(() => state.profile?.role === 'admin' && state.profile?.active)
 export const authReady = computed(() => state.ready)
-
-function timestampToIso(value) {
-  if (typeof value === 'string') {
-    return value
-  }
-
-  return value?.toDate?.().toISOString() ?? ''
-}
 
 function publicProfile(uid, data) {
   return {

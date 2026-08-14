@@ -1,10 +1,16 @@
 import { ref } from 'vue'
 import { healthResources } from '../data/healthResources.js'
-import { createId } from '../utils/ids.js'
-import { RATINGS_STORAGE_KEY, readStorageArray, writeStorageArray } from '../utils/storage.js'
+import {
+  submitOrUpdateRating as persistRating,
+  subscribeToRatings,
+} from '../services/ratingService.js'
 import { currentUser } from './authStore.js'
 
 const ratings = ref([])
+const ratingsLoading = ref(true)
+const ratingsError = ref('')
+
+let unsubscribeRatings
 
 function isValidScore(score) {
   return Number.isInteger(score) && score >= 1 && score <= 5
@@ -25,40 +31,37 @@ function isValidRating(rating) {
   )
 }
 
-function persist() {
-  writeStorageArray(RATINGS_STORAGE_KEY, ratings.value)
-}
-
 export function initialiseRatings() {
-  const seen = new Set()
-  ratings.value = readStorageArray(RATINGS_STORAGE_KEY).filter((rating) => {
-    if (!isValidRating(rating)) {
-      return false
-    }
+  if (unsubscribeRatings) {
+    return
+  }
 
-    const key = `${rating.resourceId}:${rating.userId}`
-
-    if (seen.has(key)) {
-      return false
-    }
-
-    seen.add(key)
-    return true
-  })
-  persist()
+  ratingsLoading.value = true
+  ratingsError.value = ''
+  unsubscribeRatings = subscribeToRatings(
+    (nextRatings) => {
+      ratings.value = nextRatings.filter(isValidRating)
+      ratingsLoading.value = false
+    },
+    () => {
+      ratings.value = []
+      ratingsError.value = 'Ratings could not be loaded.'
+      ratingsLoading.value = false
+    },
+  )
 }
 
 export function useRatings() {
-  if (!ratings.value.length) {
-    initialiseRatings()
-  }
+  initialiseRatings()
 
   function getRatingsForResource(resourceId) {
     if (!resourceExists(resourceId)) {
       return []
     }
 
-    return ratings.value.filter((rating) => rating.resourceId === resourceId && isValidRating(rating))
+    return ratings.value.filter(
+      (rating) => rating.resourceId === resourceId && isValidRating(rating),
+    )
   }
 
   function getUserRating(resourceId, userId) {
@@ -67,12 +70,13 @@ export function useRatings() {
     }
 
     return (
-      ratings.value.find((rating) => rating.resourceId === resourceId && rating.userId === userId) ??
-      null
+      ratings.value.find(
+        (rating) => rating.resourceId === resourceId && rating.userId === userId,
+      ) ?? null
     )
   }
 
-  function submitOrUpdateRating(resourceId, userId, score) {
+  async function submitOrUpdateRating(resourceId, userId, score) {
     const numericScore = Number(score)
 
     if (!resourceExists(resourceId)) {
@@ -87,31 +91,14 @@ export function useRatings() {
       throw new Error('Choose a whole-number rating from 1 to 5.')
     }
 
-    const existingRating = ratings.value.find(
-      (rating) => rating.resourceId === resourceId && rating.userId === userId,
-    )
-    const now = new Date().toISOString()
+    ratingsError.value = ''
 
-    if (existingRating) {
-      ratings.value = ratings.value.map((rating) =>
-        rating.id === existingRating.id ? { ...rating, score: numericScore, updatedAt: now } : rating,
-      )
-    } else {
-      ratings.value = [
-        {
-          id: createId('rating'),
-          resourceId,
-          userId,
-          score: numericScore,
-          createdAt: now,
-          updatedAt: now,
-        },
-        ...ratings.value,
-      ]
+    try {
+      await persistRating(resourceId, numericScore)
+    } catch {
+      ratingsError.value = 'The rating could not be saved.'
+      throw new Error(ratingsError.value)
     }
-
-    persist()
-    return getUserRating(resourceId, userId)
   }
 
   function getRatingCount(resourceId) {
@@ -141,6 +128,8 @@ export function useRatings() {
 
   return {
     ratings,
+    ratingsLoading,
+    ratingsError,
     getRatingsForResource,
     getUserRating,
     submitOrUpdateRating,
@@ -148,4 +137,11 @@ export function useRatings() {
     getRatingCount,
     getRatingDistribution,
   }
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    unsubscribeRatings?.()
+    unsubscribeRatings = undefined
+  })
 }

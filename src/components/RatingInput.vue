@@ -10,9 +10,12 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  submitRating: {
+    type: Function,
+    required: true,
+  },
 })
 
-const emit = defineEmits(['submit'])
 const selectedScore = ref(props.currentScore)
 const statusMessage = ref('')
 const errorMessage = ref('')
@@ -38,7 +41,7 @@ async function handleSubmit() {
   isSubmitting.value = true
 
   try {
-    await emit('submit', numericScore)
+    await props.submitRating(numericScore)
     statusMessage.value = 'Your rating has been saved.'
   } catch (error) {
     errorMessage.value = error.message || 'Rating could not be saved.'

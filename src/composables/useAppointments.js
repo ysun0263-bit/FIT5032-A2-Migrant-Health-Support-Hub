@@ -1,71 +1,126 @@
-import { ref } from 'vue'
-import { createId } from '../utils/ids.js'
-import { APPOINTMENTS_STORAGE_KEY, readStorageArray, writeStorageArray } from '../utils/storage.js'
-import { isAdmin } from '../stores/authStore.js'
+import { ref, watch } from 'vue'
+import {
+  createAppointment,
+  deleteAppointment as deleteAppointmentDocument,
+  subscribeToAllAppointments,
+  subscribeToUserAppointments,
+  updateAppointmentStatus as updateAppointmentStatusDocument,
+} from '../services/appointmentService.js'
+import { currentUser, isAdmin } from '../stores/authStore.js'
+
+const appointments = ref([])
+const appointmentsLoading = ref(true)
+const appointmentsError = ref('')
+
+let stopAuthWatch
+let unsubscribeAppointments
+let subscriptionGeneration = 0
+
+function stopAppointmentSubscription() {
+  subscriptionGeneration += 1
+  unsubscribeAppointments?.()
+  unsubscribeAppointments = undefined
+}
+
+function startAppointmentSubscription(user, admin) {
+  stopAppointmentSubscription()
+  appointments.value = []
+  appointmentsError.value = ''
+
+  if (!user?.uid) {
+    appointmentsLoading.value = false
+    return
+  }
+
+  appointmentsLoading.value = true
+  const generation = subscriptionGeneration
+  const onData = (nextAppointments) => {
+    if (generation !== subscriptionGeneration) {
+      return
+    }
+
+    appointments.value = nextAppointments
+    appointmentsLoading.value = false
+  }
+  const onError = () => {
+    if (generation !== subscriptionGeneration) {
+      return
+    }
+
+    appointments.value = []
+    appointmentsError.value = 'Appointments could not be loaded.'
+    appointmentsLoading.value = false
+  }
+
+  unsubscribeAppointments = admin
+    ? subscribeToAllAppointments(onData, onError)
+    : subscribeToUserAppointments(user.uid, onData, onError)
+}
+
+export function initialiseAppointments() {
+  if (stopAuthWatch) {
+    return
+  }
+
+  stopAuthWatch = watch(
+    [currentUser, isAdmin],
+    ([user, admin]) => startAppointmentSubscription(user, admin),
+    { immediate: true },
+  )
+}
 
 export function useAppointments() {
-  const appointments = ref(readStorageArray(APPOINTMENTS_STORAGE_KEY))
+  initialiseAppointments()
 
-  function persist(nextAppointments) {
-    appointments.value = nextAppointments
-    writeStorageArray(APPOINTMENTS_STORAGE_KEY, nextAppointments)
-  }
+  async function addAppointment(form) {
+    appointmentsError.value = ''
 
-  function addAppointment(form, userId = null) {
-    const appointment = {
-      id: createId('booking'),
-      userId,
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
-      preferredLanguage: form.preferredLanguage,
-      supportTopic: form.supportTopic,
-      preferredDate: form.preferredDate,
-      preferredTime: form.preferredTime,
-      contactPreference: form.contactPreference,
-      notes: form.notes.trim(),
-      status: 'pending',
-      createdAt: new Date().toISOString(),
+    try {
+      return await createAppointment(form)
+    } catch {
+      appointmentsError.value = 'The appointment could not be created.'
+      throw new Error(appointmentsError.value)
     }
-
-    persist([appointment, ...appointments.value])
-    return appointment
   }
 
-  function deleteAppointment(id, ownerUserId = null) {
-    const target = appointments.value.find((appointment) => appointment.id === id)
+  async function deleteAppointment(id) {
+    appointmentsError.value = ''
 
-    if (!target || (ownerUserId && target.userId !== ownerUserId)) {
+    try {
+      await deleteAppointmentDocument(id)
+      return true
+    } catch {
+      appointmentsError.value = 'The appointment could not be deleted.'
       return false
     }
-
-    persist(appointments.value.filter((appointment) => appointment.id !== id))
-    return true
   }
 
-  function updateAppointmentStatus(id, status) {
-    const allowedStatuses = ['pending', 'confirmed', 'completed', 'cancelled']
+  async function updateAppointmentStatus(id, status) {
+    appointmentsError.value = ''
 
-    if (!isAdmin.value || !allowedStatuses.includes(status)) {
+    try {
+      await updateAppointmentStatusDocument(id, status)
+      return true
+    } catch {
+      appointmentsError.value = 'The appointment status could not be updated.'
       return false
     }
-
-    persist(
-      appointments.value.map((appointment) =>
-        appointment.id === id ? { ...appointment, status } : appointment,
-      ),
-    )
-    return true
-  }
-
-  function reloadAppointments() {
-    appointments.value = readStorageArray(APPOINTMENTS_STORAGE_KEY)
   }
 
   return {
     appointments,
+    appointmentsLoading,
+    appointmentsError,
     addAppointment,
     deleteAppointment,
     updateAppointmentStatus,
-    reloadAppointments,
   }
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    stopAppointmentSubscription()
+    stopAuthWatch?.()
+    stopAuthWatch = undefined
+  })
 }
