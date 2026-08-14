@@ -93,7 +93,7 @@ const metrics = computed(() => {
       text="Admin-only dashboard for viewing demonstration users, appointments, and content statistics."
     />
 
-    <PlaceholderNotice text="Admin access is role-checked, but this is still a front-end Local Storage course demo, not production administration." />
+    <PlaceholderNotice text="User accounts are loaded from Firestore. Appointments and ratings remain browser-based demonstration data until Phase 2." />
 
     <div v-if="isAdmin" class="page-stack">
       <div class="card-grid three">

@@ -21,8 +21,8 @@ function closeMenu() {
   isMenuOpen.value = false
 }
 
-function handleLogout() {
-  logout()
+async function handleLogout() {
+  await logout()
   closeMenu()
   router.push('/')
 }

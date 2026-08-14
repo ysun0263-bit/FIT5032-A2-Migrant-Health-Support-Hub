@@ -147,7 +147,7 @@ function handleDelete(id) {
         level="h1"
         eyebrow="Appointments"
         title="Request support appointment"
-        text="Submit a demonstration booking request with validation. Bookings are saved only in this browser's Local Storage and are not linked to a secure user account."
+        text="Submit a demonstration booking request with validation. Bookings are linked to your Firebase UID but remain saved only in this browser until Phase 2."
       />
 
       <PlaceholderNotice text="Do not enter sensitive medical details. Notes are for coursework demonstration only and are limited to 500 characters." />

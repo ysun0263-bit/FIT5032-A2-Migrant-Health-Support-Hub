@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import FormFieldError from '../components/FormFieldError.vue'
 import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
-import { getInternalUsersForValidation, register } from '../stores/authStore.js'
+import { register } from '../stores/authStore.js'
 import { validateRegistrationForm } from '../utils/authValidation.js'
 
 const router = useRouter()
@@ -43,7 +43,7 @@ function applyErrors(nextErrors) {
 }
 
 function validate() {
-  const nextErrors = validateRegistrationForm(form, getInternalUsersForValidation())
+  const nextErrors = validateRegistrationForm(form, [])
   applyErrors(nextErrors)
   return Object.keys(nextErrors).length === 0
 }
@@ -89,7 +89,7 @@ async function handleSubmit() {
       text="Create a coursework demonstration account. Registration always creates a standard user role."
     />
 
-    <PlaceholderNotice text="This is a front-end course demo. Users and sessions are stored in this browser's Local Storage and are not production authentication." />
+    <PlaceholderNotice text="Account authentication is provided by Firebase. Profile details are stored in Cloud Firestore; do not enter sensitive health information." />
 
     <form class="form-panel" aria-label="Registration form" novalidate @submit.prevent="handleSubmit">
       <label>
@@ -164,8 +164,8 @@ async function handleSubmit() {
           :aria-describedby="describedBy('acknowledgement')"
           @change="handleInput"
         >
-        I understand this account is for FIT5032 coursework demonstration only and uses browser
-        Local Storage.
+        I understand this account is for FIT5032 coursework demonstration and must not contain
+        sensitive health information.
       </label>
       <FormFieldError :id="errorId('acknowledgement')" :message="errors.acknowledgement" />
 

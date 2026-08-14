@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { healthResources } from '../data/healthResources.js'
 import { createId } from '../utils/ids.js'
 import { RATINGS_STORAGE_KEY, readStorageArray, writeStorageArray } from '../utils/storage.js'
-import { currentUser, getInternalUsersForValidation } from './authStore.js'
+import { currentUser } from './authStore.js'
 
 const ratings = ref([])
 
@@ -14,10 +14,6 @@ function resourceExists(resourceId) {
   return healthResources.some((resource) => resource.id === resourceId)
 }
 
-function activeUserExists(userId) {
-  return getInternalUsersForValidation().some((user) => user.id === userId && user.active)
-}
-
 function isValidRating(rating) {
   return (
     rating &&
@@ -25,8 +21,7 @@ function isValidRating(rating) {
     typeof rating.resourceId === 'string' &&
     typeof rating.userId === 'string' &&
     isValidScore(rating.score) &&
-    resourceExists(rating.resourceId) &&
-    activeUserExists(rating.userId)
+    resourceExists(rating.resourceId)
   )
 }
 
@@ -67,7 +62,7 @@ export function useRatings() {
   }
 
   function getUserRating(resourceId, userId) {
-    if (!resourceExists(resourceId) || !activeUserExists(userId)) {
+    if (!resourceExists(resourceId) || typeof userId !== 'string') {
       return null
     }
 
@@ -84,7 +79,7 @@ export function useRatings() {
       throw new Error('This resource is not available for rating.')
     }
 
-    if (!currentUser.value || currentUser.value.id !== userId || !activeUserExists(userId)) {
+    if (!currentUser.value?.active || currentUser.value.uid !== userId) {
       throw new Error('Login is required before submitting a rating.')
     }
 

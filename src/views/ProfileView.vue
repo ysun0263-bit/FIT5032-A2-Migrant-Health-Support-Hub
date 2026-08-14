@@ -20,7 +20,7 @@ function handleDelete(id) {
 </script>
 
 <template>
-  <div class="page-stack">
+  <div v-if="currentUser" class="page-stack">
     <section class="content-section narrow page-stack">
       <SectionHeading
         level="h1"
@@ -29,7 +29,7 @@ function handleDelete(id) {
         text="This page shows the current authenticated user's demonstration account information."
       />
 
-      <PlaceholderNotice text="This is not a secure personal medical account. User and appointment records are stored in this browser's Local Storage for coursework demonstration." />
+      <PlaceholderNotice text="Your identity profile is stored in Firebase. Appointments remain demonstration records in this browser until the Phase 2 data migration." />
 
       <div class="summary-panel">
         <h2>Account details</h2>

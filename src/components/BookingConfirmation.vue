@@ -11,8 +11,8 @@ defineProps({
   <section class="confirmation-panel" aria-labelledby="booking-confirmation-title" tabindex="-1">
     <h2 id="booking-confirmation-title">Booking confirmation</h2>
     <p>
-      Your demonstration booking has been saved on this device. This is not a secure personal
-      medical account.
+      Your demonstration booking has been linked to your Firebase account and saved on this
+      device. It is not a medical record.
     </p>
     <dl class="confirmation-grid">
       <div>

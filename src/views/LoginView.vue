@@ -87,7 +87,7 @@ async function handleSubmit() {
       text="Sign in to access profile, appointments, and role-based pages in this coursework demo."
     />
 
-    <PlaceholderNotice text="This front-end demo stores session state in Local Storage. It is not production backend authentication." />
+    <PlaceholderNotice text="Authentication and session persistence are provided by Firebase. Leave Remember Me unchecked on a shared device." />
 
     <form class="form-panel" aria-label="Login form" novalidate @submit.prevent="handleSubmit">
       <label>

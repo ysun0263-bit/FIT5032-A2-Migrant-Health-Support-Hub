@@ -6,13 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "emulators": "firebase emulators:start --project demo-migrant-health-hub",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-migrant-health-hub \"node --test tests/firestore.rules.test.js\""
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
+    "firebase": "^12.17.1",
     "vite": "^7.0.0",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
+    "firebase-tools": "^15.26.0"
+  }
 }

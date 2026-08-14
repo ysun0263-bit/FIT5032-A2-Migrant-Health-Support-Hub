@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "demo-migrant-health-hub",
+    "production": "fit5032-a3-migrant-health-hub"
+  },
+  "targets": {},
+  "etags": {}
+}

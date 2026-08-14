@@ -29,8 +29,8 @@ function requestDelete(appointment) {
       <p class="eyebrow">Appointments saved on this device</p>
       <h2 id="saved-appointments-title">Demonstration appointment list</h2>
       <p>
-        These records are stored only in this browser's Local Storage for coursework demonstration.
-        They are not a secure personal medical account.
+        These records are linked to the signed-in Firebase user but stored only in this browser's
+        Local Storage until Phase 2. They are not medical records.
       </p>
     </div>
 

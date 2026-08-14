@@ -12,6 +12,7 @@ import ResourcesView from '../views/ResourcesView.vue'
 import ServicesView from '../views/ServicesView.vue'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
 import {
+  authReady,
   currentUser,
   initialiseAuth,
   isAdmin,
@@ -52,7 +53,9 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  await initialiseAuth()
+  if (!authReady.value) {
+    await initialiseAuth()
+  }
 
   if (['login', 'register'].includes(to.name) && isAuthenticated.value) {
     return isAdmin.value ? { name: 'admin' } : { name: 'profile' }
