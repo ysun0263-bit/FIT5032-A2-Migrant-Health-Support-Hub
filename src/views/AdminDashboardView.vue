@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import AdminAppointmentList from '../components/AdminAppointmentList.vue'
+import AdminEmailPanel from '../components/AdminEmailPanel.vue'
 import AdminUserList from '../components/AdminUserList.vue'
 import FeatureCard from '../components/FeatureCard.vue'
 import SectionHeading from '../components/SectionHeading.vue'
@@ -125,6 +126,8 @@ const metrics = computed(() => {
     <p v-if="ratingsError" class="form-status error" role="alert">{{ ratingsError }}</p>
 
     <div v-if="isAdmin" class="page-stack">
+      <AdminEmailPanel />
+
       <div class="card-grid three">
         <FeatureCard
           v-for="metric in metrics"

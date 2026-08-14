@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
 
 const useEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true'
 const demoProjectId = 'demo-migrant-health-hub'
@@ -28,6 +29,7 @@ if (missingConfig.length) {
 export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig)
 export const firebaseAuth = getAuth(firebaseApp)
 export const firestoreDb = getFirestore(firebaseApp)
+export const firebaseFunctions = getFunctions(firebaseApp, 'australia-southeast1')
 export const firebaseProjectId = firebaseConfig.projectId
 export const usingFirebaseEmulators = useEmulators
 
@@ -36,5 +38,6 @@ const emulatorConnectionKey = '__migrantHealthHubFirebaseEmulatorsConnected__'
 if (useEmulators && !globalThis[emulatorConnectionKey]) {
   connectAuthEmulator(firebaseAuth, 'http://127.0.0.1:9099', { disableWarnings: true })
   connectFirestoreEmulator(firestoreDb, '127.0.0.1', 8080)
+  connectFunctionsEmulator(firebaseFunctions, '127.0.0.1', 5001)
   globalThis[emulatorConnectionKey] = true
 }

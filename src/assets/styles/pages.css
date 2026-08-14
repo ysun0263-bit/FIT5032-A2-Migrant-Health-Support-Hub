@@ -401,3 +401,37 @@ td {
 .data-table-shell tbody tr:hover {
   background: var(--color-soft);
 }
+
+.full-width-field {
+  grid-column: 1 / -1;
+}
+
+.admin-email-panel h2 {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.admin-email-panel > div > p:last-child {
+  margin-bottom: 0;
+}
+
+.attachment-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-soft);
+  padding: 0.75rem 1rem;
+}
+
+.attachment-summary div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.attachment-summary span {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
