@@ -45,3 +45,50 @@ export async function sendSingleEmail({
 
   return { id: response.data.id, provider: 'resend' }
 }
+
+export async function sendBulkEmails({
+  recipients,
+  subject,
+  message,
+  attachment,
+  mode,
+  apiKey,
+  fromEmail,
+  concurrency = 4,
+  deliver = sendSingleEmail,
+}) {
+  const results = new Array(recipients.length)
+  let nextIndex = 0
+
+  async function worker() {
+    while (nextIndex < recipients.length) {
+      const index = nextIndex
+      nextIndex += 1
+      const recipient = recipients[index]
+
+      try {
+        await deliver({
+          to: recipient.email,
+          subject,
+          message,
+          attachment,
+          mode,
+          apiKey,
+          fromEmail,
+        })
+        results[index] = { userId: recipient.userId, status: 'sent' }
+      } catch {
+        results[index] = { userId: recipient.userId, status: 'failed' }
+      }
+    }
+  }
+
+  const workerCount = Math.min(Math.max(1, concurrency), recipients.length)
+  await Promise.all(Array.from({ length: workerCount }, () => worker()))
+
+  return {
+    sentCount: results.filter(({ status }) => status === 'sent').length,
+    failedCount: results.filter(({ status }) => status === 'failed').length,
+    results,
+  }
+}

@@ -3,8 +3,17 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { logger } from 'firebase-functions'
 import { defineSecret, defineString } from 'firebase-functions/params'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
-import { EmailConfigurationError, sendSingleEmail } from './services/emailService.js'
-import { ValidationError, validateEmailPayload } from './utils/validation.js'
+import {
+  EmailConfigurationError,
+  sendBulkEmails,
+  sendSingleEmail,
+} from './services/emailService.js'
+import {
+  ValidationError,
+  validEmailAddress,
+  validateBulkEmailPayload,
+  validateEmailPayload,
+} from './utils/validation.js'
 
 initializeApp()
 
@@ -26,6 +35,42 @@ async function requireActiveAdmin(uid) {
   if (!snapshot.exists || profile?.role !== 'admin' || profile?.active !== true) {
     throw new HttpsError('permission-denied', 'An active administrator account is required.')
   }
+}
+
+async function resolveBulkRecipients(recipientUserIds) {
+  let snapshots
+
+  try {
+    const database = getFirestore()
+    snapshots = await database.getAll(
+      ...recipientUserIds.map((userId) => database.doc(`users/${userId}`)),
+    )
+  } catch {
+    throw new HttpsError('internal', 'Recipients could not be checked.')
+  }
+
+  const recipients = []
+  const skippedResults = []
+
+  snapshots.forEach((snapshot, index) => {
+    const userId = recipientUserIds[index]
+    const profile = snapshot.data()
+    const email = typeof profile?.email === 'string' ? profile.email.trim().toLowerCase() : ''
+
+    if (
+      !snapshot.exists
+      || profile?.active !== true
+      || email.length > 254
+      || !validEmailAddress(email)
+    ) {
+      skippedResults.push({ userId, status: 'skipped' })
+      return
+    }
+
+    recipients.push({ userId, email })
+  })
+
+  return { recipients, skippedResults }
 }
 
 export const sendEmail = onCall(
@@ -77,5 +122,70 @@ export const sendEmail = onCall(
       logger.error('Admin email provider failure', { ...logContext, category: 'provider' })
       throw new HttpsError('internal', 'The email could not be sent. Please try again.')
     }
+  },
+)
+
+export const sendBulkEmail = onCall(
+  {
+    region: 'australia-southeast1',
+    secrets: [resendApiKey],
+    timeoutSeconds: 120,
+    memory: '256MiB',
+  },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Sign in before sending bulk email.')
+    }
+
+    await requireActiveAdmin(request.auth.uid)
+
+    let bulkEmail
+    try {
+      bulkEmail = validateBulkEmailPayload(request.data)
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw new HttpsError('invalid-argument', error.message)
+      }
+      throw new HttpsError('invalid-argument', 'Bulk email request is invalid.')
+    }
+
+    const { recipients, skippedResults } = await resolveBulkRecipients(
+      bulkEmail.recipientUserIds,
+    )
+    const mode = emailDeliveryMode.value()
+    const delivery = await sendBulkEmails({
+      recipients,
+      subject: bulkEmail.subject,
+      message: bulkEmail.message,
+      attachment: bulkEmail.attachment,
+      mode,
+      apiKey: mode === 'mock' ? undefined : resendApiKey.value(),
+      fromEmail: resendFromEmail.value(),
+      concurrency: 4,
+    })
+    const summary = {
+      requestedCount: bulkEmail.requestedCount,
+      uniqueRecipientCount: bulkEmail.recipientUserIds.length,
+      validRecipientCount: recipients.length,
+      sentCount: delivery.sentCount,
+      failedCount: delivery.failedCount,
+      skippedCount: skippedResults.length,
+      duplicateCount: bulkEmail.duplicateCount,
+      results: [...delivery.results, ...skippedResults],
+    }
+
+    logger.info('Admin bulk email completed', {
+      callerUid: request.auth.uid,
+      requestedCount: summary.requestedCount,
+      validRecipientCount: summary.validRecipientCount,
+      sentCount: summary.sentCount,
+      failedCount: summary.failedCount,
+      skippedCount: summary.skippedCount,
+      attachmentFilename: bulkEmail.attachment?.filename ?? null,
+      attachmentBytes: bulkEmail.attachment?.size ?? 0,
+      provider: mode,
+    })
+
+    return summary
   },
 )

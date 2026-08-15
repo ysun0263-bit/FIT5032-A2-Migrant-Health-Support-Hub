@@ -4,17 +4,20 @@ import DataTable from './DataTable.vue'
 import { downloadCsv } from '../utils/exportCsv.js'
 import { downloadPdfReport } from '../utils/exportPdf.js'
 
-defineProps({
+const props = defineProps({
   users: { type: Array, required: true },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  selectedRecipientIds: { type: Array, default: () => [] },
 })
+const emit = defineEmits(['toggle-recipient', 'select-visible', 'clear-selection'])
 
 const tableRef = ref()
 const exportMessage = ref('')
 const exportingPdf = ref(false)
 
 const columns = [
+  { key: 'bulkSelection', label: 'Bulk email', globalSearch: false },
   { key: 'fullName', label: 'Full Name', sortable: true, filter: 'text' },
   { key: 'email', label: 'Email', sortable: true, filter: 'text' },
   {
@@ -41,6 +44,18 @@ const columns = [
   },
   { key: 'createdAt', label: 'Created At', sortable: true, globalSearch: false },
 ]
+
+function isSelected(userId) {
+  return props.selectedRecipientIds.includes(userId)
+}
+
+function selectVisiblePage() {
+  const userIds = (tableRef.value?.getVisibleRows() ?? [])
+    .filter((user) => user.active)
+    .map((user) => user.uid ?? user.id)
+    .filter(Boolean)
+  emit('select-visible', userIds)
+}
 
 const csvColumns = [
   { header: 'Full Name', value: (user) => user.fullName },
@@ -127,6 +142,30 @@ async function handlePdfExport() {
 
     <p v-if="exportMessage" class="export-status" role="status">{{ exportMessage }}</p>
 
+    <div class="selection-toolbar">
+      <p aria-live="polite">
+        <strong>Selected recipients: {{ selectedRecipientIds.length }}</strong>
+      </p>
+      <div class="action-row" aria-label="Bulk email selection actions">
+        <button
+          type="button"
+          class="button secondary"
+          :disabled="loading || Boolean(error)"
+          @click="selectVisiblePage"
+        >
+          Select visible page
+        </button>
+        <button
+          type="button"
+          class="button secondary"
+          :disabled="selectedRecipientIds.length === 0"
+          @click="$emit('clear-selection')"
+        >
+          Clear selection
+        </button>
+      </div>
+    </div>
+
     <DataTable
       ref="tableRef"
       table-id="users"
@@ -137,6 +176,21 @@ async function handlePdfExport() {
       :error="error"
       empty-message="No users found."
       no-match-message="No matching users."
-    />
+    >
+      <template #cell-bulkSelection="{ row }">
+        <label class="bulk-selection-cell">
+          <input
+            type="checkbox"
+            :checked="isSelected(row.uid ?? row.id)"
+            :disabled="!row.active"
+            :aria-label="row.active
+              ? `Select ${row.fullName} for bulk email`
+              : `Inactive — bulk email unavailable for ${row.fullName}`"
+            @change="$emit('toggle-recipient', row.uid ?? row.id)"
+          />
+          <span v-if="!row.active" class="field-help">Inactive — unavailable</span>
+        </label>
+      </template>
+    </DataTable>
   </section>
 </template>

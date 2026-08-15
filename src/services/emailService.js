@@ -2,6 +2,7 @@ import { httpsCallable } from 'firebase/functions'
 import { firebaseFunctions } from '../firebase/firebase.js'
 
 export const MAX_EMAIL_ATTACHMENT_BYTES = 3 * 1024 * 1024
+export const MAX_BULK_RECIPIENTS = 50
 export const EMAIL_ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.csv,.txt'
 
 const ALLOWED_TYPES = new Set([
@@ -41,14 +42,20 @@ export function validateEmailAttachment(file) {
 }
 
 export function validateEmailForm({ to, subject, message, attachment }) {
-  const errors = {}
+  const errors = validateEmailContent({ subject, message, attachment })
   const recipient = to.trim()
-  const trimmedSubject = subject.trim()
-  const trimmedMessage = message.trim()
 
   if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient) || recipient.length > 254) {
     errors.to = 'Enter one valid recipient email address.'
   }
+  return errors
+}
+
+function validateEmailContent({ subject, message, attachment }) {
+  const errors = {}
+  const trimmedSubject = subject.trim()
+  const trimmedMessage = message.trim()
+
   if (!trimmedSubject || trimmedSubject.length > 150) {
     errors.subject = 'Enter a subject between 1 and 150 characters.'
   }
@@ -59,6 +66,17 @@ export function validateEmailForm({ to, subject, message, attachment }) {
   const attachmentError = validateEmailAttachment(attachment)
   if (attachmentError) {
     errors.attachment = attachmentError
+  }
+  return errors
+}
+
+export function validateBulkEmailForm({ recipientUserIds, subject, message, attachment }) {
+  const errors = validateEmailContent({ subject, message, attachment })
+
+  if (!Array.isArray(recipientUserIds) || recipientUserIds.length === 0) {
+    errors.recipients = 'Select at least one active user.'
+  } else if (recipientUserIds.length > MAX_BULK_RECIPIENTS) {
+    errors.recipients = `Too many recipients. Select up to ${MAX_BULK_RECIPIENTS} users.`
   }
   return errors
 }
@@ -104,6 +122,22 @@ export async function sendAdminEmail({ to, subject, message, attachment }) {
   try {
     const response = await callable({
       to: to.trim(),
+      subject: subject.trim(),
+      message: message.trim(),
+      attachment: await encodeAttachment(attachment),
+    })
+    return response.data
+  } catch (error) {
+    throw new Error(friendlyCallableError(error))
+  }
+}
+
+export async function sendBulkAdminEmail({ recipientUserIds, subject, message, attachment }) {
+  const callable = httpsCallable(firebaseFunctions, 'sendBulkEmail')
+
+  try {
+    const response = await callable({
+      recipientUserIds: [...recipientUserIds],
       subject: subject.trim(),
       message: message.trim(),
       attachment: await encodeAttachment(attachment),

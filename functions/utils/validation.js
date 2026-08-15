@@ -4,6 +4,7 @@ export const MAX_SUBJECT_LENGTH = 150
 export const MAX_MESSAGE_LENGTH = 10_000
 export const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024
 export const MAX_FILENAME_LENGTH = 120
+export const MAX_BULK_RECIPIENTS = 50
 
 export const ALLOWED_ATTACHMENT_TYPES = new Set([
   'application/pdf',
@@ -39,7 +40,7 @@ function requireTrimmedString(value, label, maxLength) {
   return trimmed
 }
 
-function validEmailAddress(value) {
+export function validEmailAddress(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
@@ -116,6 +117,47 @@ export function validateEmailPayload(data) {
 
   return {
     to,
+    subject: requireTrimmedString(data.subject, 'Subject', MAX_SUBJECT_LENGTH),
+    message: requireTrimmedString(data.message, 'Message', MAX_MESSAGE_LENGTH),
+    attachment: validateAttachment(data.attachment),
+  }
+}
+
+export function validateBulkEmailPayload(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new ValidationError('Bulk email request is invalid.')
+  }
+  if (!Array.isArray(data.recipientUserIds) || data.recipientUserIds.length === 0) {
+    throw new ValidationError('Select at least one active user.')
+  }
+  if (data.recipientUserIds.length > MAX_BULK_RECIPIENTS) {
+    throw new ValidationError(`Too many recipients. Select up to ${MAX_BULK_RECIPIENTS} users.`)
+  }
+
+  const recipientUserIds = []
+  const seen = new Set()
+
+  data.recipientUserIds.forEach((value) => {
+    if (
+      typeof value !== 'string'
+      || !value.trim()
+      || value.trim().length > 128
+      || value.includes('/')
+    ) {
+      throw new ValidationError('Recipient user IDs are invalid.')
+    }
+
+    const userId = value.trim()
+    if (!seen.has(userId)) {
+      seen.add(userId)
+      recipientUserIds.push(userId)
+    }
+  })
+
+  return {
+    recipientUserIds,
+    requestedCount: data.recipientUserIds.length,
+    duplicateCount: data.recipientUserIds.length - recipientUserIds.length,
     subject: requireTrimmedString(data.subject, 'Subject', MAX_SUBJECT_LENGTH),
     message: requireTrimmedString(data.message, 'Message', MAX_MESSAGE_LENGTH),
     attachment: validateAttachment(data.attachment),

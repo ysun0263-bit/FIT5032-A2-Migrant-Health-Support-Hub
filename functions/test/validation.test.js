@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   MAX_ATTACHMENT_BYTES,
+  MAX_BULK_RECIPIENTS,
   ValidationError,
+  validateBulkEmailPayload,
   validateEmailPayload,
 } from '../utils/validation.js'
 
@@ -111,5 +113,76 @@ test('11 invalid base64 is rejected', () => {
       },
     }),
     /valid base64/i,
+  )
+})
+
+test('12 valid bulk request deduplicates recipient UIDs', () => {
+  const result = validateBulkEmailPayload({
+    recipientUserIds: ['uid-a', 'uid-a', 'uid-b'],
+    subject: validPayload.subject,
+    message: validPayload.message,
+  })
+  assert.deepEqual(result.recipientUserIds, ['uid-a', 'uid-b'])
+  assert.equal(result.requestedCount, 3)
+  assert.equal(result.duplicateCount, 1)
+})
+
+test('13 zero bulk recipients is rejected', () => {
+  expectValidationError(
+    () => validateBulkEmailPayload({
+      recipientUserIds: [],
+      subject: validPayload.subject,
+      message: validPayload.message,
+    }),
+    /at least one active user/i,
+  )
+})
+
+test('14 bulk request above the recipient limit is rejected', () => {
+  expectValidationError(
+    () => validateBulkEmailPayload({
+      recipientUserIds: Array.from({ length: MAX_BULK_RECIPIENTS + 1 }, (_, index) => `uid-${index}`),
+      subject: validPayload.subject,
+      message: validPayload.message,
+    }),
+    /up to 50 users/i,
+  )
+})
+
+test('15 bulk request reuses subject validation', () => {
+  expectValidationError(
+    () => validateBulkEmailPayload({
+      recipientUserIds: ['uid-a'],
+      subject: 'S'.repeat(151),
+      message: validPayload.message,
+    }),
+    /150 characters/i,
+  )
+})
+
+test('16 bulk request reuses message validation', () => {
+  expectValidationError(
+    () => validateBulkEmailPayload({
+      recipientUserIds: ['uid-a'],
+      subject: validPayload.subject,
+      message: '',
+    }),
+    /message is required/i,
+  )
+})
+
+test('17 bulk request reuses attachment validation', () => {
+  expectValidationError(
+    () => validateBulkEmailPayload({
+      recipientUserIds: ['uid-a'],
+      subject: validPayload.subject,
+      message: validPayload.message,
+      attachment: {
+        filename: 'program.exe',
+        contentType: 'application/pdf',
+        base64: Buffer.from('test').toString('base64'),
+      },
+    }),
+    /type is not allowed/i,
   )
 })

@@ -1,12 +1,20 @@
 <script setup>
-import { nextTick, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import {
   EMAIL_ATTACHMENT_ACCEPT,
   sendAdminEmail,
+  sendBulkAdminEmail,
+  validateBulkEmailForm,
   validateEmailAttachment,
   validateEmailForm,
 } from '../services/emailService.js'
 
+const props = defineProps({
+  selectedUsers: { type: Array, default: () => [] },
+})
+const emit = defineEmits(['clear-selection'])
+
+const mode = ref('single')
 const form = reactive({ to: '', subject: '', message: '' })
 const errors = reactive({})
 const attachment = ref()
@@ -14,7 +22,15 @@ const fileInput = ref()
 const sending = ref(false)
 const status = ref({ type: '', message: '' })
 const fieldRefs = {}
-const fieldOrder = ['to', 'subject', 'message', 'attachment']
+const selectedCount = computed(() => props.selectedUsers.length)
+const selectedPreview = computed(() => props.selectedUsers.slice(0, 3))
+const remainingCount = computed(() => Math.max(0, selectedCount.value - selectedPreview.value.length))
+const sendLabel = computed(() => {
+  if (mode.value === 'single') return sending.value ? 'Sending...' : 'Send Email'
+  return sending.value
+    ? `Sending to ${selectedCount.value} users...`
+    : `Send to ${selectedCount.value} users`
+})
 
 function setFieldRef(field, element) {
   if (element) fieldRefs[field] = element
@@ -27,6 +43,12 @@ function setFileInput(element) {
 
 function clearErrors() {
   Object.keys(errors).forEach((key) => delete errors[key])
+}
+
+function changeMode(nextMode) {
+  mode.value = nextMode
+  clearErrors()
+  status.value = { type: '', message: '' }
 }
 
 function setAttachment(file) {
@@ -58,27 +80,59 @@ function formatBytes(bytes) {
   return `${(bytes / 1024).toFixed(1)} KB`
 }
 
+async function focusFirstError() {
+  await nextTick()
+  const fieldOrder = mode.value === 'bulk'
+    ? ['recipients', 'subject', 'message', 'attachment']
+    : ['to', 'subject', 'message', 'attachment']
+  const firstInvalidField = fieldOrder.find((field) => errors[field])
+  fieldRefs[firstInvalidField]?.focus()
+}
+
 async function handleSubmit() {
+  if (sending.value) return
+
   clearErrors()
   status.value = { type: '', message: '' }
-  Object.assign(errors, validateEmailForm({ ...form, attachment: attachment.value }))
+  const recipientUserIds = props.selectedUsers.map((user) => user.uid ?? user.id).filter(Boolean)
+  const validation = mode.value === 'bulk'
+    ? validateBulkEmailForm({ recipientUserIds, ...form, attachment: attachment.value })
+    : validateEmailForm({ ...form, attachment: attachment.value })
+  Object.assign(errors, validation)
 
   if (Object.keys(errors).length) {
     status.value = { type: 'error', message: 'Review the highlighted email fields.' }
-    await nextTick()
-    const firstInvalidField = fieldOrder.find((field) => errors[field])
-    fieldRefs[firstInvalidField]?.focus()
+    await focusFirstError()
     return
   }
 
   sending.value = true
   try {
-    const result = await sendAdminEmail({ ...form, attachment: attachment.value })
-    status.value = {
-      type: 'success',
-      message: `Email sent successfully. Reference: ${result.id}`,
+    if (mode.value === 'bulk') {
+      const result = await sendBulkAdminEmail({
+        recipientUserIds,
+        subject: form.subject,
+        message: form.message,
+        attachment: attachment.value,
+      })
+      const parts = [`${result.sentCount} sent`]
+      if (result.failedCount) parts.push(`${result.failedCount} failed`)
+      if (result.skippedCount) parts.push(`${result.skippedCount} skipped`)
+      status.value = {
+        type: result.failedCount || result.skippedCount ? 'warning' : 'success',
+        message: result.failedCount || result.skippedCount
+          ? `${parts.join(', ')}.`
+          : `${result.sentCount} emails sent successfully.`,
+      }
+      emit('clear-selection')
+    } else {
+      const result = await sendAdminEmail({ ...form, attachment: attachment.value })
+      status.value = {
+        type: 'success',
+        message: `Email sent successfully. Reference: ${result.id}`,
+      }
+      form.to = ''
     }
-    form.to = ''
     form.subject = ''
     form.message = ''
     removeAttachment()
@@ -94,15 +148,44 @@ async function handleSubmit() {
   <section class="form-panel admin-email-panel" aria-labelledby="admin-email-title">
     <div>
       <p class="card-tag">Admin email</p>
-      <h2 id="admin-email-title">Send a single email</h2>
+      <h2 id="admin-email-title">Send email</h2>
       <p>
-        Send one plain-text message with an optional attachment. Do not include sensitive health
-        information in this coursework demonstration.
+        Send a single or bulk plain-text message with an optional attachment. Do not include
+        sensitive health information in this coursework demonstration.
       </p>
     </div>
 
     <form class="form-grid" novalidate @submit.prevent="handleSubmit">
-      <label>
+      <fieldset class="full-width-field email-mode-fieldset">
+        <legend>Email mode</legend>
+        <div class="email-mode-options">
+          <label>
+            <input
+              type="radio"
+              name="email-mode"
+              value="single"
+              :checked="mode === 'single'"
+              :disabled="sending"
+              @change="changeMode('single')"
+            />
+            Single Email
+          </label>
+          <label>
+            <input
+              :ref="(element) => setFieldRef('recipients', element)"
+              type="radio"
+              name="email-mode"
+              value="bulk"
+              :checked="mode === 'bulk'"
+              :disabled="sending"
+              @change="changeMode('bulk')"
+            />
+            Bulk Email
+          </label>
+        </div>
+      </fieldset>
+
+      <label v-if="mode === 'single'">
         Recipient Email (required)
         <input
           :ref="(element) => setFieldRef('to', element)"
@@ -117,6 +200,42 @@ async function handleSubmit() {
           {{ errors.to }}
         </span>
       </label>
+
+      <div
+        v-else
+        class="bulk-recipient-summary full-width-field"
+        :class="{ invalid: errors.recipients }"
+        :aria-describedby="errors.recipients ? 'bulk-recipients-error' : 'bulk-recipients-help'"
+      >
+        <div>
+          <strong>{{ selectedCount }} users selected</strong>
+          <ul v-if="selectedPreview.length" id="bulk-recipients-help">
+            <li v-for="user in selectedPreview" :key="user.uid ?? user.id">
+              {{ user.fullName }}
+            </li>
+            <li v-if="remainingCount">+ {{ remainingCount }} more</li>
+          </ul>
+          <span v-else id="bulk-recipients-help" class="field-help">
+            Select active users in the Users table.
+          </span>
+        </div>
+        <button
+          type="button"
+          class="button secondary"
+          :disabled="!selectedCount || sending"
+          @click="$emit('clear-selection')"
+        >
+          Clear selection
+        </button>
+        <span
+          v-if="errors.recipients"
+          id="bulk-recipients-error"
+          class="field-error full-width-field"
+          role="alert"
+        >
+          {{ errors.recipients }}
+        </span>
+      </div>
 
       <label>
         Subject (required)
@@ -187,8 +306,15 @@ async function handleSubmit() {
       </div>
 
       <div class="full-width-field action-row">
-        <button type="submit" class="button primary" :disabled="sending">
-          {{ sending ? 'Sending...' : 'Send Email' }}
+        <button
+          type="submit"
+          class="button primary"
+          :disabled="sending"
+          :aria-label="mode === 'bulk'
+            ? `Send bulk email to ${selectedCount} selected users`
+            : 'Send single email'"
+        >
+          {{ sendLabel }}
         </button>
       </div>
 

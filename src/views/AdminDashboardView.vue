@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AdminAppointmentList from '../components/AdminAppointmentList.vue'
 import AdminEmailPanel from '../components/AdminEmailPanel.vue'
 import AdminUserList from '../components/AdminUserList.vue'
@@ -24,6 +24,35 @@ const {
 } = useAppointments()
 const { ratings, ratingsLoading, ratingsError, getAverageRating, getRatingCount } = useRatings()
 const users = computed(() => getUsers())
+const selectedRecipientIds = ref(new Set())
+const selectedUsers = computed(() =>
+  users.value.filter((user) => user.active && selectedRecipientIds.value.has(user.uid ?? user.id)),
+)
+
+function toggleRecipient(userId) {
+  if (!userId) return
+  const nextSelection = new Set(selectedRecipientIds.value)
+  if (nextSelection.has(userId)) nextSelection.delete(userId)
+  else nextSelection.add(userId)
+  selectedRecipientIds.value = nextSelection
+}
+
+function selectVisibleRecipients(userIds) {
+  selectedRecipientIds.value = new Set([...selectedRecipientIds.value, ...userIds])
+}
+
+function clearRecipientSelection() {
+  selectedRecipientIds.value = new Set()
+}
+
+watch(users, (currentUsers) => {
+  const activeIds = new Set(
+    currentUsers.filter((user) => user.active).map((user) => user.uid ?? user.id),
+  )
+  selectedRecipientIds.value = new Set(
+    [...selectedRecipientIds.value].filter((userId) => activeIds.has(userId)),
+  )
+})
 const ratedResources = computed(() =>
   healthResources.filter((resource) => getRatingCount(resource.id) > 0),
 )
@@ -126,8 +155,6 @@ const metrics = computed(() => {
     <p v-if="ratingsError" class="form-status error" role="alert">{{ ratingsError }}</p>
 
     <div v-if="isAdmin" class="page-stack">
-      <AdminEmailPanel />
-
       <div class="card-grid three">
         <FeatureCard
           v-for="metric in metrics"
@@ -142,6 +169,14 @@ const metrics = computed(() => {
         :users="users"
         :loading="adminUsersLoading"
         :error="adminUsersError"
+        :selected-recipient-ids="[...selectedRecipientIds]"
+        @toggle-recipient="toggleRecipient"
+        @select-visible="selectVisibleRecipients"
+        @clear-selection="clearRecipientSelection"
+      />
+      <AdminEmailPanel
+        :selected-users="selectedUsers"
+        @clear-selection="clearRecipientSelection"
       />
       <AdminAppointmentList
         :appointments="appointments"

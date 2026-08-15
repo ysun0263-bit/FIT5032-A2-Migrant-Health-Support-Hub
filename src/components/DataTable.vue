@@ -39,6 +39,7 @@ function ariaSort(column) {
 
 defineExpose({
   getExportRows: () => [...table.sortedRows.value],
+  getVisibleRows: () => [...table.paginatedRows.value],
   getFilterSummary: table.getFilterSummary,
   clearFilters: table.clearFilters,
 })
