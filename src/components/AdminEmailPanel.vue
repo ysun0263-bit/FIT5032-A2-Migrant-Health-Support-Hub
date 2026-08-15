@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
 import {
   EMAIL_ATTACHMENT_ACCEPT,
   sendAdminEmail,
@@ -13,6 +13,17 @@ const attachment = ref()
 const fileInput = ref()
 const sending = ref(false)
 const status = ref({ type: '', message: '' })
+const fieldRefs = {}
+const fieldOrder = ['to', 'subject', 'message', 'attachment']
+
+function setFieldRef(field, element) {
+  if (element) fieldRefs[field] = element
+}
+
+function setFileInput(element) {
+  fileInput.value = element
+  setFieldRef('attachment', element)
+}
 
 function clearErrors() {
   Object.keys(errors).forEach((key) => delete errors[key])
@@ -54,6 +65,9 @@ async function handleSubmit() {
 
   if (Object.keys(errors).length) {
     status.value = { type: 'error', message: 'Review the highlighted email fields.' }
+    await nextTick()
+    const firstInvalidField = fieldOrder.find((field) => errors[field])
+    fieldRefs[firstInvalidField]?.focus()
     return
   }
 
@@ -89,44 +103,52 @@ async function handleSubmit() {
 
     <form class="form-grid" novalidate @submit.prevent="handleSubmit">
       <label>
-        Recipient Email
+        Recipient Email (required)
         <input
+          :ref="(element) => setFieldRef('to', element)"
           v-model="form.to"
           type="email"
-          autocomplete="off"
+          autocomplete="email"
+          required
           :aria-invalid="Boolean(errors.to)"
           :aria-describedby="errors.to ? 'email-to-error' : undefined"
         />
-        <span v-if="errors.to" id="email-to-error" class="field-error">{{ errors.to }}</span>
+        <span v-if="errors.to" id="email-to-error" class="field-error" role="alert">
+          {{ errors.to }}
+        </span>
       </label>
 
       <label>
-        Subject
+        Subject (required)
         <input
+          :ref="(element) => setFieldRef('subject', element)"
           v-model="form.subject"
           type="text"
           maxlength="150"
+          required
           :aria-invalid="Boolean(errors.subject)"
           :aria-describedby="errors.subject ? 'email-subject-error' : undefined"
         />
-        <span v-if="errors.subject" id="email-subject-error" class="field-error">
+        <span v-if="errors.subject" id="email-subject-error" class="field-error" role="alert">
           {{ errors.subject }}
         </span>
       </label>
 
       <label class="full-width-field">
-        Message
+        Message (required)
         <textarea
+          :ref="(element) => setFieldRef('message', element)"
           v-model="form.message"
           rows="7"
           maxlength="10000"
+          required
           :aria-invalid="Boolean(errors.message)"
           :aria-describedby="errors.message ? 'email-message-error' : 'email-message-help'"
         />
         <span id="email-message-help" class="field-help">
           {{ form.message.length }} / 10,000 characters. Plain text only.
         </span>
-        <span v-if="errors.message" id="email-message-error" class="field-error">
+        <span v-if="errors.message" id="email-message-error" class="field-error" role="alert">
           {{ errors.message }}
         </span>
       </label>
@@ -134,7 +156,7 @@ async function handleSubmit() {
       <label class="full-width-field">
         Attachment (optional)
         <input
-          ref="fileInput"
+          :ref="setFileInput"
           type="file"
           :accept="EMAIL_ATTACHMENT_ACCEPT"
           :aria-invalid="Boolean(errors.attachment)"
@@ -144,7 +166,12 @@ async function handleSubmit() {
         <span id="email-attachment-help" class="field-help">
           One PDF, PNG, JPEG, CSV, or TXT file, up to 3 MB.
         </span>
-        <span v-if="errors.attachment" id="email-attachment-error" class="field-error">
+        <span
+          v-if="errors.attachment"
+          id="email-attachment-error"
+          class="field-error"
+          role="alert"
+        >
           {{ errors.attachment }}
         </span>
       </label>

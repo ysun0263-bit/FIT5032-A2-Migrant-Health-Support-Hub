@@ -8,7 +8,12 @@ defineProps({
 </script>
 
 <template>
-  <section class="confirmation-panel" aria-labelledby="booking-confirmation-title" tabindex="-1">
+  <section
+    class="confirmation-panel"
+    aria-labelledby="booking-confirmation-title"
+    role="status"
+    tabindex="-1"
+  >
     <h2 id="booking-confirmation-title">Booking confirmation</h2>
     <p>
       Your appointment has been linked to your Firebase account and saved in Cloud Firestore. It

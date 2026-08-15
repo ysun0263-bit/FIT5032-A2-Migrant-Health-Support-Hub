@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { currentUser, isAdmin, isAuthenticated, logout } from '../stores/authStore.js'
 
 const isMenuOpen = ref(false)
+const menuButton = ref()
 const router = useRouter()
 
 const publicNavItems = [
@@ -28,8 +29,9 @@ async function handleLogout() {
 }
 
 function handleKeydown(event) {
-  if (event.key === 'Escape') {
+  if (event.key === 'Escape' && isMenuOpen.value) {
     closeMenu()
+    menuButton.value?.focus()
   }
 }
 
@@ -54,6 +56,7 @@ onBeforeUnmount(() => {
       </RouterLink>
 
       <button
+        ref="menuButton"
         class="menu-toggle"
         type="button"
         aria-label="Toggle navigation menu"

@@ -115,6 +115,7 @@ async function handlePdfExport() {
         <button
           type="button"
           class="button secondary"
+          aria-label="Export appointments as CSV"
           :disabled="loading || Boolean(error)"
           @click="handleCsvExport"
         >
@@ -123,6 +124,7 @@ async function handlePdfExport() {
         <button
           type="button"
           class="button secondary"
+          :aria-label="exportingPdf ? 'Generating appointments PDF' : 'Export appointments as PDF'"
           :disabled="loading || Boolean(error) || exportingPdf"
           @click="handlePdfExport"
         >

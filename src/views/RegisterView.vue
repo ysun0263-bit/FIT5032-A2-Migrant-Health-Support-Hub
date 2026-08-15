@@ -93,12 +93,13 @@ async function handleSubmit() {
 
     <form class="form-panel" aria-label="Registration form" novalidate @submit.prevent="handleSubmit">
       <label>
-        Full name
+        Full name (required)
         <input
           :ref="(element) => setFieldRef('fullName', element)"
           v-model="form.fullName"
           type="text"
           autocomplete="name"
+          required
           :aria-invalid="Boolean(errors.fullName)"
           :aria-describedby="describedBy('fullName')"
           @input="handleInput"
@@ -108,12 +109,13 @@ async function handleSubmit() {
       </label>
 
       <label>
-        Email
+        Email (required)
         <input
           :ref="(element) => setFieldRef('email', element)"
           v-model="form.email"
           type="email"
           autocomplete="email"
+          required
           :aria-invalid="Boolean(errors.email)"
           :aria-describedby="describedBy('email')"
           @input="handleInput"
@@ -123,12 +125,13 @@ async function handleSubmit() {
       </label>
 
       <label>
-        Password
+        Password (required)
         <input
           :ref="(element) => setFieldRef('password', element)"
           v-model="form.password"
           type="password"
           autocomplete="new-password"
+          required
           :aria-invalid="Boolean(errors.password)"
           :aria-describedby="errors.password ? errorId('password') : 'password-help'"
           @input="handleInput"
@@ -141,12 +144,13 @@ async function handleSubmit() {
       </label>
 
       <label>
-        Confirm password
+        Confirm password (required)
         <input
           :ref="(element) => setFieldRef('confirmPassword', element)"
           v-model="form.confirmPassword"
           type="password"
           autocomplete="new-password"
+          required
           :aria-invalid="Boolean(errors.confirmPassword)"
           :aria-describedby="describedBy('confirmPassword')"
           @input="handleInput"
@@ -160,6 +164,7 @@ async function handleSubmit() {
           :ref="(element) => setFieldRef('acknowledgement', element)"
           v-model="form.acknowledgement"
           type="checkbox"
+          required
           :aria-invalid="Boolean(errors.acknowledgement)"
           :aria-describedby="describedBy('acknowledgement')"
           @change="handleInput"
@@ -169,7 +174,12 @@ async function handleSubmit() {
       </label>
       <FormFieldError :id="errorId('acknowledgement')" :message="errors.acknowledgement" />
 
-      <p v-if="status.message" class="form-status" :class="status.type" aria-live="polite">
+      <p
+        v-if="status.message"
+        class="form-status"
+        :class="status.type"
+        :role="status.type === 'error' ? 'alert' : 'status'"
+      >
         {{ status.message }}
       </p>
 

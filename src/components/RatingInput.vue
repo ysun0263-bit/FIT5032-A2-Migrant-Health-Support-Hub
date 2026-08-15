@@ -56,13 +56,13 @@ async function handleSubmit() {
     <fieldset class="rating-fieldset" :disabled="disabled || isSubmitting">
       <legend>{{ currentScore ? `Your current rating is ${currentScore} out of 5` : 'Rate this resource' }}</legend>
       <label v-for="score in [1, 2, 3, 4, 5]" :key="score" class="rating-option">
-        <input v-model.number="selectedScore" type="radio" name="rating" :value="score">
+        <input v-model.number="selectedScore" type="radio" name="rating" :value="score" required>
         <span aria-hidden="true">{{ '★'.repeat(score) }}</span>
         <span class="sr-only">Rate {{ score }} out of 5</span>
       </label>
     </fieldset>
     <button type="submit" :disabled="disabled || isSubmitting">Save rating</button>
-    <p v-if="statusMessage" class="form-status success" aria-live="polite">{{ statusMessage }}</p>
-    <p v-if="errorMessage" class="form-status error" aria-live="polite">{{ errorMessage }}</p>
+    <p v-if="statusMessage" class="form-status success" role="status">{{ statusMessage }}</p>
+    <p v-if="errorMessage" class="form-status error" role="alert">{{ errorMessage }}</p>
   </form>
 </template>

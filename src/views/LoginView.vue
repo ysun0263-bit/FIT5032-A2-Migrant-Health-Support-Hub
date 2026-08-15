@@ -91,12 +91,13 @@ async function handleSubmit() {
 
     <form class="form-panel" aria-label="Login form" novalidate @submit.prevent="handleSubmit">
       <label>
-        Email
+        Email (required)
         <input
           :ref="(element) => setFieldRef('email', element)"
           v-model="form.email"
           type="email"
           autocomplete="email"
+          required
           :aria-invalid="Boolean(errors.email)"
           :aria-describedby="describedBy('email')"
           @input="handleInput"
@@ -106,12 +107,13 @@ async function handleSubmit() {
       </label>
 
       <label>
-        Password
+        Password (required)
         <input
           :ref="(element) => setFieldRef('password', element)"
           v-model="form.password"
           type="password"
           autocomplete="current-password"
+          required
           :aria-invalid="Boolean(errors.password)"
           :aria-describedby="describedBy('password')"
           @input="handleInput"
@@ -125,7 +127,12 @@ async function handleSubmit() {
         Remember this browser session
       </label>
 
-      <p v-if="status.message" class="form-status" :class="status.type" aria-live="polite">
+      <p
+        v-if="status.message"
+        class="form-status"
+        :class="status.type"
+        :role="status.type === 'error' ? 'alert' : 'status'"
+      >
         {{ status.message }}
       </p>
 

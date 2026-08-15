@@ -1,5 +1,10 @@
 <script setup>
 defineProps({
+  level: {
+    type: String,
+    default: 'h2',
+    validator: (value) => ['h1', 'h2'].includes(value),
+  },
   eyebrow: {
     type: String,
     default: '',
@@ -18,7 +23,7 @@ defineProps({
 <template>
   <div class="section-heading">
     <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
-    <h1 v-if="$attrs.level === 'h1'">{{ title }}</h1>
+    <h1 v-if="level === 'h1'">{{ title }}</h1>
     <h2 v-else>{{ title }}</h2>
     <p v-if="text">{{ text }}</p>
   </div>

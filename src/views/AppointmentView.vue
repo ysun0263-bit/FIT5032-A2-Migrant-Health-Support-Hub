@@ -165,11 +165,13 @@ async function handleDelete(id) {
       <form class="form-panel" aria-label="Appointment request" novalidate @submit.prevent="handleSubmit">
         <div class="form-grid">
           <label>
-            Full name
+            Full name (required)
             <input
               :ref="(element) => setFieldRef('fullName', element)"
               v-model="form.fullName"
               type="text"
+              autocomplete="name"
+              required
               placeholder="Example: Amina Hassan"
               :aria-invalid="Boolean(errors.fullName)"
               :aria-describedby="describedBy('fullName')"
@@ -180,11 +182,13 @@ async function handleDelete(id) {
           </label>
 
           <label>
-            Email
+            Email (required)
             <input
               :ref="(element) => setFieldRef('email', element)"
               v-model="form.email"
               type="email"
+              autocomplete="email"
+              required
               placeholder="name@example.com"
               :aria-invalid="Boolean(errors.email)"
               :aria-describedby="describedBy('email')"
@@ -195,10 +199,11 @@ async function handleDelete(id) {
           </label>
 
           <label>
-            Preferred language
+            Preferred language (required)
             <select
               :ref="(element) => setFieldRef('preferredLanguage', element)"
               v-model="form.preferredLanguage"
+              required
               :aria-invalid="Boolean(errors.preferredLanguage)"
               :aria-describedby="describedBy('preferredLanguage')"
               @change="handleInput"
@@ -215,10 +220,11 @@ async function handleDelete(id) {
           </label>
 
           <label>
-            Support topic
+            Support topic (required)
             <select
               :ref="(element) => setFieldRef('supportTopic', element)"
               v-model="form.supportTopic"
+              required
               :aria-invalid="Boolean(errors.supportTopic)"
               :aria-describedby="describedBy('supportTopic')"
               @change="handleInput"
@@ -232,11 +238,12 @@ async function handleDelete(id) {
           </label>
 
           <label>
-            Preferred date
+            Preferred date (required)
             <input
               :ref="(element) => setFieldRef('preferredDate', element)"
               v-model="form.preferredDate"
               type="date"
+              required
               :min="formatLocalDate()"
               :aria-invalid="Boolean(errors.preferredDate)"
               :aria-describedby="describedBy('preferredDate')"
@@ -247,11 +254,12 @@ async function handleDelete(id) {
           </label>
 
           <label>
-            Preferred time
+            Preferred time (required)
             <input
               :ref="(element) => setFieldRef('preferredTime', element)"
               v-model="form.preferredTime"
               type="time"
+              required
               :aria-invalid="Boolean(errors.preferredTime)"
               :aria-describedby="describedBy('preferredTime')"
               @input="handleInput"
@@ -262,13 +270,14 @@ async function handleDelete(id) {
         </div>
 
         <fieldset class="choice-group">
-          <legend>Contact preference</legend>
+          <legend>Contact preference (required)</legend>
           <label v-for="preference in contactPreferences" :key="preference" class="radio-option">
             <input
               :ref="preference === contactPreferences[0] ? (element) => setFieldRef('contactPreference', element) : undefined"
               v-model="form.contactPreference"
               type="radio"
               name="contactPreference"
+              :required="preference === contactPreferences[0]"
               :value="preference"
               :aria-invalid="Boolean(errors.contactPreference)"
               :aria-describedby="describedBy('contactPreference')"

@@ -16,6 +16,7 @@
   --color-warning-bg: #fff7ed;
   --color-warning-border: #fed7aa;
   --color-border: #d8e2dc;
+  --color-control-border: #7a8a82;
   --shadow-soft: 0 18px 45px rgb(15 118 110 / 12%);
   --radius: 8px;
   --max-content: 1180px;
@@ -64,8 +65,9 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #f59e0b;
+  outline: 3px solid #111827;
   outline-offset: 3px;
+  box-shadow: 0 0 0 6px #ffffff;
 }
 
 img,
@@ -81,6 +83,19 @@ svg {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+  border: 0;
+  padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 h1,

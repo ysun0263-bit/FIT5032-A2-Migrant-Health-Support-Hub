@@ -18,6 +18,10 @@ let destroyed = false
 const routeSourceId = 'selected-health-service-route'
 const routeLayerId = 'selected-health-service-route-line'
 
+function motionDuration(milliseconds) {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : milliseconds
+}
+
 function removeResultMarkers() {
   resultMarkers.forEach((marker) => marker.remove())
   resultMarkers = []
@@ -33,6 +37,7 @@ function popupContent(result) {
   button.type = 'button'
   button.className = 'map-popup-action'
   button.textContent = 'Get Route'
+  button.setAttribute('aria-label', `Get route to ${result.name}`)
   button.addEventListener('click', () => emit('route-request', result))
   content.append(heading, address, button)
   return content
@@ -98,7 +103,7 @@ function syncRoute() {
       (currentBounds, coordinate) => currentBounds.extend(coordinate),
       new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]),
     )
-    map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 700 })
+    map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: motionDuration(700) })
   }
 }
 
@@ -107,7 +112,7 @@ function focusResult(result) {
   map.easeTo({
     center: [result.coordinates.longitude, result.coordinates.latitude],
     zoom: 14,
-    duration: 650,
+    duration: motionDuration(650),
   })
   const index = props.results.findIndex((item) => item.id === result.id)
   if (index >= 0) resultMarkers[index]?.togglePopup()
@@ -118,7 +123,7 @@ function focusUser() {
   map.easeTo({
     center: [props.userLocation.longitude, props.userLocation.latitude],
     zoom: 13,
-    duration: 650,
+    duration: motionDuration(650),
   })
 }
 
@@ -166,7 +171,7 @@ onBeforeUnmount(() => {
   <div
     id="health-service-map"
     class="service-map"
-    role="application"
+    role="region"
     aria-label="Interactive map of nearby health service search results"
   ></div>
 </template>

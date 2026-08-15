@@ -92,6 +92,7 @@ defineExpose({
     <template v-else>
       <div class="responsive-table" role="region" :aria-label="`${tableId} table`" tabindex="0">
         <table>
+          <caption class="sr-only">{{ tableId === 'users' ? 'User accounts' : 'Appointments' }} interactive data table</caption>
           <thead>
             <tr>
               <th

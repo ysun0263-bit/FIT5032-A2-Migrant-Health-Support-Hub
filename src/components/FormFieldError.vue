@@ -12,5 +12,5 @@ defineProps({
 </script>
 
 <template>
-  <p v-if="message" :id="id" class="field-error">{{ message }}</p>
+  <p v-if="message" :id="id" class="field-error" role="alert">{{ message }}</p>
 </template>

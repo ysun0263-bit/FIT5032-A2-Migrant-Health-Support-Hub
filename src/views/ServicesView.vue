@@ -203,6 +203,7 @@ onBeforeUnmount(() => {
           v-model="query"
           type="search"
           placeholder="For example: medical clinic or pharmacy"
+          required
           :disabled="!tokenIsPublic || searching"
         />
       </label>
@@ -242,8 +243,19 @@ onBeforeUnmount(() => {
             <p>{{ result.address }}</p>
             <p v-if="result.distance !== null" class="service-distance">Approximately {{ formatDistance(result.distance) }} away</p>
             <div class="action-row">
-              <button type="button" class="button secondary" @click="selectOnMap(result)">View on Map</button>
-              <button type="button" class="button primary" :disabled="routing" @click="calculateRoute(result)">Get Route</button>
+              <button
+                type="button"
+                class="button secondary"
+                :aria-label="`View ${result.name} on map`"
+                @click="selectOnMap(result)"
+              >View on Map</button>
+              <button
+                type="button"
+                class="button primary"
+                :aria-label="`Get route to ${result.name}`"
+                :disabled="routing"
+                @click="calculateRoute(result)"
+              >Get Route</button>
             </div>
           </article>
         </div>
