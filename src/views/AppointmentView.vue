@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import AppointmentCalendar from '../components/AppointmentCalendar.vue'
 import AppointmentList from '../components/AppointmentList.vue'
 import BookingConfirmation from '../components/BookingConfirmation.vue'
 import FormFieldError from '../components/FormFieldError.vue'
@@ -7,7 +8,15 @@ import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
 import { useAppointments } from '../composables/useAppointments.js'
 import { currentUser } from '../stores/authStore.js'
-import { formatLocalDate } from '../utils/date.js'
+import {
+  buildSlotKey,
+  generateDailySlots,
+  getBookingWindow,
+  isBookableDate,
+  isOccupyingAppointmentStatus,
+  isValidAppointmentTime,
+  parseSlotKey,
+} from '../utils/bookingSlots.js'
 import { NOTES_MAX_LENGTH, validateAppointmentForm } from '../utils/validation.js'
 
 const languageOptions = ['English', 'Arabic', 'Mandarin', 'Hindi', 'Vietnamese', 'Dari']
@@ -44,18 +53,74 @@ const form = reactive({
 
 const errors = reactive({})
 const fieldRefs = {}
+const calendarRef = ref()
 const submittedBooking = ref(null)
 const hasSubmitted = ref(false)
+const isSubmitting = ref(false)
+const bookingMessage = ref('')
+const bookingMessageType = ref('status')
+const bookingWindow = getBookingWindow()
 const {
   appointments,
   appointmentsLoading,
   appointmentsError,
+  bookingSlots,
+  bookingSlotsLoading,
+  bookingSlotsError,
   addAppointment,
   deleteAppointment,
 } = useAppointments()
 const currentUserAppointments = computed(() =>
   appointments.value.filter((appointment) => appointment.userId === currentUser.value?.id),
 )
+const occupiedSlotKeys = computed(() => {
+  const occupied = new Set(bookingSlots.value.map((slot) => slot.slotKey))
+
+  currentUserAppointments.value.forEach((appointment) => {
+    if (
+      !appointment.slotKey
+      && isOccupyingAppointmentStatus(appointment.status)
+      && isValidAppointmentTime(appointment.preferredTime)
+    ) {
+      const legacySlotKey = `${appointment.preferredDate}__${appointment.preferredTime}`
+
+      if (parseSlotKey(legacySlotKey)) {
+        occupied.add(legacySlotKey)
+      }
+    }
+  })
+
+  return occupied
+})
+const dailySlots = computed(() => (
+  form.preferredDate && isBookableDate(form.preferredDate)
+    ? generateDailySlots(form.preferredDate, occupiedSlotKeys.value)
+    : []
+))
+const calendarEvents = computed(() => {
+  const ownAppointmentIds = new Set(currentUserAppointments.value.map(({ id }) => id))
+  const slotEvents = bookingSlots.value.map((slot) => ({
+    id: slot.slotKey,
+    title: ownAppointmentIds.has(slot.appointmentId)
+      ? `Your appointment at ${slot.time}`
+      : `Booked at ${slot.time}`,
+    date: slot.date,
+    allDay: true,
+  }))
+  const legacyEvents = currentUserAppointments.value
+    .filter((appointment) => (
+      !appointment.slotKey
+      && isOccupyingAppointmentStatus(appointment.status)
+      && parseSlotKey(`${appointment.preferredDate}__${appointment.preferredTime}`)
+    ))
+    .map((appointment) => ({
+      id: `legacy-${appointment.id}`,
+      title: `Your legacy appointment at ${appointment.preferredTime}`,
+      date: appointment.preferredDate,
+      allDay: true,
+    }))
+  return [...slotEvents, ...legacyEvents]
+})
 
 watch(
   currentUser,
@@ -100,16 +165,23 @@ function validateField() {
 
 function focusFirstError() {
   const firstInvalidField = fieldOrder.find((field) => errors[field])
-  fieldRefs[firstInvalidField]?.focus()
+
+  if (firstInvalidField === 'preferredDate') {
+    calendarRef.value?.focusDate()
+  } else if (firstInvalidField === 'preferredTime') {
+    calendarRef.value?.focusTime()
+  } else {
+    fieldRefs[firstInvalidField]?.focus()
+  }
 }
 
 function resetForm() {
   Object.assign(form, {
-    fullName: '',
-    email: '',
+    fullName: currentUser.value?.fullName ?? '',
+    email: currentUser.value?.email ?? '',
     preferredLanguage: '',
     supportTopic: '',
-    preferredDate: '',
+    preferredDate: form.preferredDate,
     preferredTime: '',
     contactPreference: '',
     notes: '',
@@ -118,18 +190,30 @@ function resetForm() {
 
 async function handleSubmit() {
   hasSubmitted.value = false
+  bookingMessage.value = ''
 
   if (!validateField()) {
     focusFirstError()
     return
   }
 
+  isSubmitting.value = true
+
   try {
     submittedBooking.value = await addAppointment(form)
     hasSubmitted.value = true
+    bookingMessageType.value = 'status'
+    bookingMessage.value = 'Your appointment has been booked.'
     resetForm()
-  } catch {
+  } catch (error) {
     hasSubmitted.value = false
+    bookingMessageType.value = 'alert'
+    bookingMessage.value = error?.code === 'slot-conflict'
+      ? 'This time slot is no longer available. Please choose another time.'
+      : 'The appointment could not be created. Please try again.'
+    form.preferredTime = ''
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -148,6 +232,48 @@ async function handleDelete(id) {
     submittedBooking.value = null
   }
 }
+
+function handleDateSelection(date) {
+  hasSubmitted.value = false
+  submittedBooking.value = null
+  bookingMessage.value = ''
+  form.preferredDate = date
+  form.preferredTime = ''
+
+  if (date && !isBookableDate(date)) {
+    errors.preferredDate = 'Choose a weekday from tomorrow through the next 60 days.'
+  } else {
+    delete errors.preferredDate
+  }
+}
+
+function handleTimeSelection(time) {
+  const slot = dailySlots.value.find((candidate) => candidate.time === time)
+
+  if (!slot?.available) {
+    return
+  }
+
+  hasSubmitted.value = false
+  submittedBooking.value = null
+  bookingMessage.value = ''
+  form.preferredTime = time
+  delete errors.preferredTime
+}
+
+watch(occupiedSlotKeys, () => {
+  if (!form.preferredDate || !form.preferredTime || isSubmitting.value || hasSubmitted.value) {
+    return
+  }
+
+  const selectedSlotKey = buildSlotKey(form.preferredDate, form.preferredTime)
+
+  if (occupiedSlotKeys.value.has(selectedSlotKey)) {
+    form.preferredTime = ''
+    bookingMessageType.value = 'alert'
+    bookingMessage.value = 'This time slot is no longer available. Please choose another time.'
+  }
+})
 </script>
 
 <template>
@@ -157,12 +283,34 @@ async function handleDelete(id) {
         level="h1"
         eyebrow="Appointments"
         title="Request support appointment"
-        text="Submit a support booking request linked to your Firebase account and stored securely in Cloud Firestore."
+        text="Choose a Melbourne appointment time and submit a support request protected by real-time conflict detection."
       />
 
       <PlaceholderNotice text="Do not enter sensitive medical details. Notes are for coursework demonstration only and are limited to 500 characters." />
 
-      <form class="form-panel" aria-label="Appointment request" novalidate @submit.prevent="handleSubmit">
+      <AppointmentCalendar
+        ref="calendarRef"
+        :selected-date="form.preferredDate"
+        :selected-time="form.preferredTime"
+        :slots="dailySlots"
+        :events="calendarEvents"
+        :min-date="bookingWindow.minDate"
+        :max-date="bookingWindow.maxDate"
+        :loading="bookingSlotsLoading"
+        :error="bookingSlotsError"
+        :date-error="errors.preferredDate"
+        :time-error="errors.preferredTime"
+        @select-date="handleDateSelection"
+        @select-time="handleTimeSelection"
+      />
+
+      <form
+        id="appointment-request-form"
+        class="form-panel"
+        aria-label="Appointment request"
+        novalidate
+        @submit.prevent="handleSubmit"
+      >
         <div class="form-grid">
           <label>
             Full name (required)
@@ -237,36 +385,6 @@ async function handleDelete(id) {
             <FormFieldError :id="errorId('supportTopic')" :message="errors.supportTopic" />
           </label>
 
-          <label>
-            Preferred date (required)
-            <input
-              :ref="(element) => setFieldRef('preferredDate', element)"
-              v-model="form.preferredDate"
-              type="date"
-              required
-              :min="formatLocalDate()"
-              :aria-invalid="Boolean(errors.preferredDate)"
-              :aria-describedby="describedBy('preferredDate')"
-              @input="handleInput"
-              @blur="handleInput"
-            >
-            <FormFieldError :id="errorId('preferredDate')" :message="errors.preferredDate" />
-          </label>
-
-          <label>
-            Preferred time (required)
-            <input
-              :ref="(element) => setFieldRef('preferredTime', element)"
-              v-model="form.preferredTime"
-              type="time"
-              required
-              :aria-invalid="Boolean(errors.preferredTime)"
-              :aria-describedby="describedBy('preferredTime')"
-              @input="handleInput"
-              @blur="handleInput"
-            >
-            <FormFieldError :id="errorId('preferredTime')" :message="errors.preferredTime" />
-          </label>
         </div>
 
         <fieldset class="choice-group">
@@ -311,7 +429,18 @@ async function handleDelete(id) {
           <FormFieldError :id="errorId('notes')" :message="errors.notes" />
         </label>
 
-        <button type="submit" :disabled="hasSubmitted">Submit demonstration booking</button>
+        <p
+          v-if="bookingMessage"
+          class="form-status"
+          :class="{ error: bookingMessageType === 'alert' }"
+          :role="bookingMessageType"
+        >
+          {{ bookingMessage }}
+        </p>
+
+        <button type="submit" :disabled="isSubmitting">
+          {{ isSubmitting ? 'Booking appointment...' : 'Book appointment' }}
+        </button>
       </form>
 
       <BookingConfirmation v-if="submittedBooking" :booking="submittedBooking" />

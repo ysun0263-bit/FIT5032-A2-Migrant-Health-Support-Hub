@@ -115,6 +115,22 @@
     grid-template-columns: 1fr;
     gap: 0.35rem;
   }
+
+  .calendar-frame .fc-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .calendar-frame .fc-toolbar-chunk,
+  .calendar-frame .fc-button-group {
+    display: flex;
+    justify-content: center;
+  }
+
+  .calendar-frame .fc-toolbar-title {
+    font-size: 1.25rem;
+    text-align: center;
+  }
 }
 
 @media (max-width: 575px) {

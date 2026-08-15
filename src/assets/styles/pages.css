@@ -601,3 +601,94 @@ td {
   padding: 1rem;
   color: var(--color-muted);
 }
+
+.appointment-calendar {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.compact-heading {
+  margin-bottom: 1rem;
+}
+
+.calendar-frame {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.calendar-frame .fc {
+  min-width: 0;
+  color: var(--color-ink);
+  font-size: 0.95rem;
+}
+
+.calendar-frame .fc-toolbar {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.calendar-frame .fc-button {
+  min-height: 44px;
+}
+
+.calendar-date-control {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 22rem;
+  margin-top: 1.25rem;
+  font-weight: 750;
+}
+
+.availability-status {
+  margin: 1rem 0;
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.slot-picker {
+  border: 0;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.slot-picker legend {
+  margin-bottom: 0.75rem;
+  font-weight: 800;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.slot-button {
+  display: grid;
+  gap: 0.2rem;
+  min-height: 58px;
+  border: 2px solid var(--color-primary);
+  background: #ffffff;
+  color: var(--color-primary-dark);
+}
+
+.slot-button.selected {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.slot-button.booked,
+.slot-button:disabled {
+  border-color: var(--color-control-border);
+  background: #eef1ef;
+  color: #44514b;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.slot-button span {
+  font-size: 0.82rem;
+}

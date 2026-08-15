@@ -55,17 +55,40 @@ service cloud.firestore {
       return status in ['pending', 'confirmed', 'completed', 'cancelled'];
     }
 
+    function validAppointmentTime(time) {
+      return time in ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
+    }
+
+    function validAppointmentDate(date) {
+      return date is string
+        && date.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');
+    }
+
+    function hasSlotKey(data) {
+      return data.keys().hasAll(['slotKey'])
+        && data.slotKey is string
+        && data.slotKey == data.preferredDate + '__' + data.preferredTime;
+    }
+
+    function slotPath(slotKey) {
+      return /databases/$(database)/documents/bookingSlots/$(slotKey);
+    }
+
+    function appointmentPath(appointmentId) {
+      return /databases/$(database)/documents/appointments/$(appointmentId);
+    }
+
     function validNewAppointment(appointmentId) {
       return signedIn()
         && request.resource.data.keys().hasAll([
           'id', 'userId', 'fullName', 'email', 'language', 'supportTopic',
           'preferredDate', 'preferredTime', 'contactPreference', 'notes',
-          'status', 'createdAt', 'updatedAt'
+          'slotKey', 'status', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.keys().hasOnly([
           'id', 'userId', 'fullName', 'email', 'language', 'supportTopic',
           'preferredDate', 'preferredTime', 'contactPreference', 'notes',
-          'status', 'createdAt', 'updatedAt'
+          'slotKey', 'status', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.id == appointmentId
         && request.resource.data.userId == request.auth.uid
@@ -82,24 +105,79 @@ service cloud.firestore {
         && request.resource.data.supportTopic is string
         && request.resource.data.supportTopic.size() >= 1
         && request.resource.data.supportTopic.size() <= 120
-        && request.resource.data.preferredDate is string
-        && request.resource.data.preferredDate.size() == 10
-        && request.resource.data.preferredTime is string
-        && request.resource.data.preferredTime.size() >= 4
-        && request.resource.data.preferredTime.size() <= 5
+        && validAppointmentDate(request.resource.data.preferredDate)
+        && validAppointmentTime(request.resource.data.preferredTime)
+        && hasSlotKey(request.resource.data)
         && request.resource.data.contactPreference is string
         && request.resource.data.contactPreference in ['Email', 'Phone call', 'SMS']
         && request.resource.data.notes is string
         && request.resource.data.notes.size() <= 500
         && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && existsAfter(slotPath(request.resource.data.slotKey))
+        && getAfter(slotPath(request.resource.data.slotKey)).data.appointmentId == appointmentId
+        && getAfter(slotPath(request.resource.data.slotKey)).data.date
+          == request.resource.data.preferredDate
+        && getAfter(slotPath(request.resource.data.slotKey)).data.time
+          == request.resource.data.preferredTime;
     }
 
     function validAdminAppointmentUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['status', 'updatedAt'])
         && validAppointmentStatus(request.resource.data.status)
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && (
+          !hasSlotKey(resource.data)
+          || (
+            request.resource.data.status == 'cancelled'
+              ? !existsAfter(slotPath(resource.data.slotKey))
+              : existsAfter(slotPath(resource.data.slotKey))
+                && getAfter(slotPath(resource.data.slotKey)).data.appointmentId
+                  == resource.data.id
+          )
+        );
+    }
+
+    function validNewBookingSlot(slotKey) {
+      return signedIn()
+        && request.resource.data.keys().hasAll([
+          'slotKey', 'appointmentId', 'date', 'time', 'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'slotKey', 'appointmentId', 'date', 'time', 'createdAt'
+        ])
+        && request.resource.data.slotKey == slotKey
+        && validAppointmentDate(request.resource.data.date)
+        && validAppointmentTime(request.resource.data.time)
+        && slotKey == request.resource.data.date + '__' + request.resource.data.time
+        && request.resource.data.appointmentId is string
+        && request.resource.data.appointmentId.size() >= 1
+        && request.resource.data.createdAt == request.time
+        && existsAfter(appointmentPath(request.resource.data.appointmentId))
+        && getAfter(appointmentPath(request.resource.data.appointmentId)).data.slotKey == slotKey
+        && getAfter(appointmentPath(request.resource.data.appointmentId)).data.preferredDate
+          == request.resource.data.date
+        && getAfter(appointmentPath(request.resource.data.appointmentId)).data.preferredTime
+          == request.resource.data.time
+        && getAfter(appointmentPath(request.resource.data.appointmentId)).data.status
+          in ['pending', 'confirmed', 'completed']
+        && (
+          isOwner(getAfter(appointmentPath(request.resource.data.appointmentId)).data.userId)
+          || isAdmin()
+        );
+    }
+
+    function canReleaseBookingSlot() {
+      return exists(appointmentPath(resource.data.appointmentId))
+        && (
+          isOwner(get(appointmentPath(resource.data.appointmentId)).data.userId)
+          || isAdmin()
+        )
+        && (
+          !existsAfter(appointmentPath(resource.data.appointmentId))
+          || getAfter(appointmentPath(resource.data.appointmentId)).data.status == 'cancelled'
+        );
     }
 
     function validRatingScore(score) {
@@ -144,7 +222,18 @@ service cloud.firestore {
       allow create: if validNewAppointment(appointmentId);
       allow read: if isOwner(resource.data.userId) || isAdmin();
       allow update: if isAdmin() && validAdminAppointmentUpdate();
-      allow delete: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId)
+        && (
+          !hasSlotKey(resource.data)
+          || !existsAfter(slotPath(resource.data.slotKey))
+        );
+    }
+
+    match /bookingSlots/{slotKey} {
+      allow read: if signedIn();
+      allow create: if validNewBookingSlot(slotKey);
+      allow update: if false;
+      allow delete: if canReleaseBookingSlot();
     }
 
     match /ratings/{ratingId} {

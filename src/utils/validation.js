@@ -1,4 +1,4 @@
-import { isBeforeToday } from './date.js'
+import { isBookableDate, isValidAppointmentTime } from './bookingSlots.js'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export const NOTES_MAX_LENGTH = 500
@@ -31,12 +31,14 @@ export function validateAppointmentForm(form) {
 
   if (!form.preferredDate) {
     errors.preferredDate = 'Select a preferred date.'
-  } else if (isBeforeToday(form.preferredDate)) {
-    errors.preferredDate = 'Choose today or a future date.'
+  } else if (!isBookableDate(form.preferredDate)) {
+    errors.preferredDate = 'Choose a weekday from tomorrow through the next 60 days.'
   }
 
   if (!form.preferredTime) {
     errors.preferredTime = 'Select a preferred time.'
+  } else if (!isValidAppointmentTime(form.preferredTime)) {
+    errors.preferredTime = 'Choose one of the available appointment times.'
   }
 
   if (!form.contactPreference) {

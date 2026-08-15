@@ -12,9 +12,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore'
 
 const projectId = 'demo-migrant-health-hub'
@@ -48,6 +50,42 @@ function appointment(id, userId) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }
+}
+
+function slottedAppointment(id, userId, date = '2026-08-20', time = '10:00') {
+  return {
+    ...appointment(id, userId),
+    preferredDate: date,
+    preferredTime: time,
+    slotKey: `${date}__${time}`,
+  }
+}
+
+function bookingSlot(appointmentId, date = '2026-08-20', time = '10:00') {
+  return {
+    slotKey: `${date}__${time}`,
+    appointmentId,
+    date,
+    time,
+    createdAt: serverTimestamp(),
+  }
+}
+
+async function reserveSlot(context, appointmentId, userId, date = '2026-08-20', time = '10:00') {
+  const database = context.firestore()
+  const appointmentReference = doc(database, 'appointments', appointmentId)
+  const slotReference = doc(database, 'bookingSlots', `${date}__${time}`)
+
+  return runTransaction(database, async (transaction) => {
+    const existingSlot = await transaction.get(slotReference)
+
+    if (existingSlot.exists()) {
+      throw new Error('slot-conflict')
+    }
+
+    transaction.set(appointmentReference, slottedAppointment(appointmentId, userId, date, time))
+    transaction.set(slotReference, bookingSlot(appointmentId, date, time))
+  })
 }
 
 function rating(userId, resourceId, score = 4) {
@@ -125,9 +163,7 @@ describe('users regression', () => {
 describe('appointments', () => {
   test('5 authenticated user creates own appointment', async () => {
     const context = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
-    await assertSucceeds(
-      setDoc(doc(context.firestore(), 'appointments/appointment-a'), appointment('appointment-a', 'user-a')),
-    )
+    await assertSucceeds(reserveSlot(context, 'appointment-a', 'user-a'))
   })
 
   test('6 user cannot create appointment for another UID', async () => {
@@ -211,6 +247,178 @@ describe('appointments', () => {
         userId: 'user-b',
         updatedAt: serverTimestamp(),
       }),
+    )
+  })
+})
+
+describe('booking slot security', () => {
+  test('25 guest cannot create a booking slot', async () => {
+    const context = testEnv.unauthenticatedContext()
+    await assertFails(reserveSlot(context, 'appointment-a', 'user-a'))
+  })
+
+  test('26 user creates an own valid appointment and slot atomically', async () => {
+    const context = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    await assertSucceeds(reserveSlot(context, 'appointment-a', 'user-a'))
+    const slotSnapshot = await getDoc(doc(context.firestore(), 'bookingSlots/2026-08-20__10:00'))
+    assert.equal(slotSnapshot.data().appointmentId, 'appointment-a')
+  })
+
+  test('27 user cannot create a slot linked to another UID', async () => {
+    const context = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    await assertFails(reserveSlot(context, 'appointment-b', 'user-b'))
+  })
+
+  test('28 user cannot overwrite an occupied slot', async () => {
+    await seed('appointments/appointment-a', slottedAppointment('appointment-a', 'user-a'))
+    await seed('bookingSlots/2026-08-20__10:00', bookingSlot('appointment-a'))
+    const context = testEnv.authenticatedContext('user-b', { email: 'user-b@example.test' })
+    await assertFails(
+      setDoc(
+        doc(context.firestore(), 'bookingSlots/2026-08-20__10:00'),
+        bookingSlot('appointment-b'),
+      ),
+    )
+  })
+
+  test('29 user cannot delete another user slot', async () => {
+    await seed('appointments/appointment-a', slottedAppointment('appointment-a', 'user-a'))
+    await seed('bookingSlots/2026-08-20__10:00', bookingSlot('appointment-a'))
+    const context = testEnv.authenticatedContext('user-b', { email: 'user-b@example.test' })
+    await assertFails(deleteDoc(doc(context.firestore(), 'bookingSlots/2026-08-20__10:00')))
+  })
+
+  test('30 owner releases own appointment and slot atomically', async () => {
+    await seed('appointments/appointment-a', slottedAppointment('appointment-a', 'user-a'))
+    await seed('bookingSlots/2026-08-20__10:00', bookingSlot('appointment-a'))
+    const context = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    const database = context.firestore()
+
+    await assertSucceeds(
+      runTransaction(database, async (transaction) => {
+        transaction.delete(doc(database, 'appointments/appointment-a'))
+        transaction.delete(doc(database, 'bookingSlots/2026-08-20__10:00'))
+      }),
+    )
+  })
+
+  test('31 admin can cancel an appointment and release its slot', async () => {
+    await seedAdmin()
+    await seed('appointments/appointment-a', slottedAppointment('appointment-a', 'user-a'))
+    await seed('bookingSlots/2026-08-20__10:00', bookingSlot('appointment-a'))
+    const context = testEnv.authenticatedContext('admin-user', { email: 'admin@example.test' })
+    const database = context.firestore()
+
+    await assertSucceeds(
+      runTransaction(database, async (transaction) => {
+        transaction.update(doc(database, 'appointments/appointment-a'), {
+          status: 'cancelled',
+          updatedAt: serverTimestamp(),
+        })
+        transaction.delete(doc(database, 'bookingSlots/2026-08-20__10:00'))
+      }),
+    )
+  })
+
+  test('32 invalid booking slot schema is denied', async () => {
+    const context = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    const database = context.firestore()
+    const batch = writeBatch(database)
+    batch.set(
+      doc(database, 'appointments/appointment-a'),
+      slottedAppointment('appointment-a', 'user-a'),
+    )
+    batch.set(doc(database, 'bookingSlots/2026-08-20__10:00'), {
+      ...bookingSlot('appointment-a'),
+      email: 'private@example.test',
+    })
+    await assertFails(batch.commit())
+  })
+})
+
+describe('booking conflict consistency', () => {
+  test('33 concurrent reservations allow exactly one appointment and one slot', async () => {
+    const userA = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    const userB = testEnv.authenticatedContext('user-b', { email: 'user-b@example.test' })
+    const results = await Promise.allSettled([
+      reserveSlot(userA, 'appointment-a', 'user-a'),
+      reserveSlot(userB, 'appointment-b', 'user-b'),
+    ])
+
+    assert.equal(results.filter(({ status }) => status === 'fulfilled').length, 1)
+    assert.equal(results.filter(({ status }) => status === 'rejected').length, 1)
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const database = context.firestore()
+      assert.equal((await getDocs(collection(database, 'appointments'))).size, 1)
+      assert.equal((await getDocs(collection(database, 'bookingSlots'))).size, 1)
+    })
+  })
+
+  test('34 delete releases a slot so another user can rebook it', async () => {
+    const userA = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    const userB = testEnv.authenticatedContext('user-b', { email: 'user-b@example.test' })
+    await reserveSlot(userA, 'appointment-a', 'user-a')
+
+    const databaseA = userA.firestore()
+    await runTransaction(databaseA, async (transaction) => {
+      transaction.delete(doc(databaseA, 'appointments/appointment-a'))
+      transaction.delete(doc(databaseA, 'bookingSlots/2026-08-20__10:00'))
+    })
+
+    await assertSucceeds(reserveSlot(userB, 'appointment-b', 'user-b'))
+  })
+
+  test('35 admin cancel releases a slot so another user can rebook it', async () => {
+    await seedAdmin()
+    const userA = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    const userB = testEnv.authenticatedContext('user-b', { email: 'user-b@example.test' })
+    const admin = testEnv.authenticatedContext('admin-user', { email: 'admin@example.test' })
+    await reserveSlot(userA, 'appointment-a', 'user-a')
+
+    const adminDatabase = admin.firestore()
+    await runTransaction(adminDatabase, async (transaction) => {
+      transaction.update(doc(adminDatabase, 'appointments/appointment-a'), {
+        status: 'cancelled',
+        updatedAt: serverTimestamp(),
+      })
+      transaction.delete(doc(adminDatabase, 'bookingSlots/2026-08-20__10:00'))
+    })
+
+    await assertSucceeds(reserveSlot(userB, 'appointment-b', 'user-b'))
+  })
+
+  test('36 admin confirm keeps the slot occupied', async () => {
+    await seedAdmin()
+    const userA = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    const admin = testEnv.authenticatedContext('admin-user', { email: 'admin@example.test' })
+    await reserveSlot(userA, 'appointment-a', 'user-a')
+    await assertSucceeds(
+      updateDoc(doc(admin.firestore(), 'appointments/appointment-a'), {
+        status: 'confirmed',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    assert.equal(
+      (await getDoc(doc(admin.firestore(), 'bookingSlots/2026-08-20__10:00'))).exists(),
+      true,
+    )
+  })
+
+  test('37 completed appointment retains its historical slot consistently', async () => {
+    await seedAdmin()
+    const userA = testEnv.authenticatedContext('user-a', { email: 'user-a@example.test' })
+    const admin = testEnv.authenticatedContext('admin-user', { email: 'admin@example.test' })
+    await reserveSlot(userA, 'appointment-a', 'user-a')
+    await assertSucceeds(
+      updateDoc(doc(admin.firestore(), 'appointments/appointment-a'), {
+        status: 'completed',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    assert.equal(
+      (await getDoc(doc(admin.firestore(), 'bookingSlots/2026-08-20__10:00'))).exists(),
+      true,
     )
   })
 })

@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { nextTick } from 'vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
-import AppointmentView from '../views/AppointmentView.vue'
 import EventsView from '../views/EventsView.vue'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
@@ -28,7 +27,7 @@ const routes = [
   {
     path: '/appointments',
     name: 'appointments',
-    component: AppointmentView,
+    component: () => import('../views/AppointmentView.vue'),
     meta: { requiresAuth: true, title: 'Appointments' },
   },
   { path: '/events', name: 'events', component: EventsView, meta: { title: 'Events' } },
