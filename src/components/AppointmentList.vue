@@ -16,6 +16,14 @@ defineProps({
     type: String,
     default: '',
   },
+  actionDisabled: {
+    type: Boolean,
+    default: false,
+  },
+  disabledMessage: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['delete'])
@@ -43,6 +51,9 @@ function requestDelete(appointment) {
     </div>
 
     <p v-if="loading" class="empty-state" role="status">Loading appointments…</p>
+    <p v-if="actionDisabled && disabledMessage" class="offline-feature-message" role="status">
+      {{ disabledMessage }}
+    </p>
     <p v-else-if="error" class="form-status error" role="alert">{{ error }}</p>
     <div v-else-if="appointments.length" class="appointment-list">
       <article v-for="appointment in appointments" :key="appointment.id" class="summary-panel">
@@ -64,7 +75,9 @@ function requestDelete(appointment) {
             <dd>{{ appointment.status }}</dd>
           </div>
         </dl>
-        <button type="button" @click="requestDelete(appointment)">Delete appointment</button>
+        <button type="button" :disabled="actionDisabled" @click="requestDelete(appointment)">
+          Delete appointment
+        </button>
       </article>
     </div>
 

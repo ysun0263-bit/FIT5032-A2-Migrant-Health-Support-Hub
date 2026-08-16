@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import ServiceMap from '../components/ServiceMap.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { useConnectivity } from '../composables/useConnectivity.js'
 import {
   formatDistance,
   formatDuration,
@@ -11,6 +12,7 @@ import {
 } from '../services/mapboxService.js'
 
 const token = String(import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? '').trim()
+const { isOnline } = useConnectivity()
 const tokenIsPublic = isPublicMapboxToken(token)
 const tokenError = !token
   ? 'Map configuration is not available.'
@@ -55,6 +57,11 @@ function errorMessage(error, fallback) {
 }
 
 async function handleSearch() {
+  if (!isOnline.value) {
+    searchStatus.value = 'Map search and route planning require an internet connection.'
+    return
+  }
+
   const trimmedQuery = query.value.trim()
   if (!trimmedQuery) {
     searchStatus.value = 'Enter a health service to search for.'
@@ -102,6 +109,11 @@ function selectOnMap(result) {
 }
 
 function requestLocation() {
+  if (!isOnline.value) {
+    locationStatus.value = 'Map search and route planning require an internet connection.'
+    return
+  }
+
   if (!navigator.geolocation) {
     locationStatus.value = 'Your browser does not support location access. You can still search around Melbourne.'
     return
@@ -135,6 +147,11 @@ function requestLocation() {
 }
 
 async function calculateRoute(result = selectedResult.value) {
+  if (!isOnline.value) {
+    routeStatus.value = 'Map search and route planning require an internet connection.'
+    return
+  }
+
   selectedResult.value = result
   if (!userLocation.value) {
     routeStatus.value = 'Use your location first to calculate a route.'
@@ -195,6 +212,11 @@ onBeforeUnmount(() => {
       <p>The rest of the website remains available. Add a dedicated public token to enable service search and routing.</p>
     </div>
 
+    <p v-if="!isOnline" class="offline-feature-message" role="status">
+      Map search and route planning require an internet connection. Other cached health
+      information remains available.
+    </p>
+
     <form class="search-panel service-search-form" aria-label="Health service search" @submit.prevent="handleSearch">
       <label for="health-service-query">
         Health service or place
@@ -204,14 +226,14 @@ onBeforeUnmount(() => {
           type="search"
           placeholder="For example: medical clinic or pharmacy"
           required
-          :disabled="!tokenIsPublic || searching"
+          :disabled="!tokenIsPublic || searching || !isOnline"
         />
       </label>
       <div class="action-row">
-        <button type="submit" class="button primary" :disabled="!tokenIsPublic || searching">
+        <button type="submit" class="button primary" :disabled="!tokenIsPublic || searching || !isOnline">
           {{ searching ? 'Searching...' : 'Search' }}
         </button>
-        <button type="button" class="button secondary" :disabled="!tokenIsPublic || locating" @click="requestLocation">
+        <button type="button" class="button secondary" :disabled="!tokenIsPublic || locating || !isOnline" @click="requestLocation">
           {{ locating ? 'Locating...' : 'Use my location' }}
         </button>
       </div>
@@ -229,7 +251,7 @@ onBeforeUnmount(() => {
           </div>
           <label for="travel-mode">
             Travel mode
-            <select id="travel-mode" v-model="travelMode" :disabled="routing" @change="handleModeChange">
+            <select id="travel-mode" v-model="travelMode" :disabled="routing || !isOnline" @change="handleModeChange">
               <option value="walking">Walking</option>
               <option value="driving">Driving</option>
             </select>
@@ -253,7 +275,7 @@ onBeforeUnmount(() => {
                 type="button"
                 class="button primary"
                 :aria-label="`Get route to ${result.name}`"
-                :disabled="routing"
+                :disabled="routing || !isOnline"
                 @click="calculateRoute(result)"
               >Get Route</button>
             </div>
@@ -269,6 +291,7 @@ onBeforeUnmount(() => {
         <h2 id="health-service-map-title">Service map</h2>
         <p class="field-help" role="status">{{ mapStatus }}</p>
         <ServiceMap
+          v-if="isOnline"
           ref="mapRef"
           :token="token"
           :results="results"
@@ -279,6 +302,7 @@ onBeforeUnmount(() => {
           @ready="mapStatus = 'Map is ready.'"
           @map-error="mapStatus = $event"
         />
+        <p v-else class="empty-state">The interactive map is unavailable while offline.</p>
       </section>
     </div>
 

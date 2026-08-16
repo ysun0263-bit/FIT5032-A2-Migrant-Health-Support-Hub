@@ -8,6 +8,7 @@ defineProps({
   appointments: { type: Array, required: true },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  networkDisabled: { type: Boolean, default: false },
 })
 
 defineEmits(['update-status'])
@@ -134,6 +135,10 @@ async function handlePdfExport() {
     </div>
 
     <p v-if="exportMessage" class="export-status" role="status">{{ exportMessage }}</p>
+    <p v-if="networkDisabled" class="offline-feature-message" role="status">
+      Appointment status changes require an internet connection. Loaded table data and local
+      exports remain available.
+    </p>
 
     <DataTable
       ref="tableRef"
@@ -151,6 +156,7 @@ async function handlePdfExport() {
         <select
           :id="`status-${row.id}`"
           :value="row.status"
+          :disabled="networkDisabled"
           @change="$emit('update-status', row.id, $event.target.value)"
         >
           <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>

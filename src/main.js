@@ -6,9 +6,11 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { initialiseAuth } from './stores/authStore.js'
 import { initialiseAppointments } from './composables/useAppointments.js'
 import { initialiseRatings } from './stores/ratingStore.js'
+import { initialisePwa } from './composables/usePwaLifecycle.js'
 
 await initialiseAuth()
 initialiseAppointments()
 initialiseRatings()
+initialisePwa()
 
 createApp(App).use(router).mount('#app')

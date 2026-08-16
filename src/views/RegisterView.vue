@@ -4,10 +4,12 @@ import { useRouter } from 'vue-router'
 import FormFieldError from '../components/FormFieldError.vue'
 import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { useConnectivity } from '../composables/useConnectivity.js'
 import { register } from '../stores/authStore.js'
 import { validateRegistrationForm } from '../utils/authValidation.js'
 
 const router = useRouter()
+const { isOnline } = useConnectivity()
 const form = reactive({
   fullName: '',
   email: '',
@@ -63,6 +65,12 @@ async function handleSubmit() {
   status.message = ''
   status.type = ''
 
+  if (!isOnline.value) {
+    status.message = 'Account registration requires an internet connection.'
+    status.type = 'error'
+    return
+  }
+
   if (!validate()) {
     focusFirstError()
     return
@@ -90,6 +98,10 @@ async function handleSubmit() {
     />
 
     <PlaceholderNotice text="Account authentication is provided by Firebase. Profile details are stored in Cloud Firestore; do not enter sensitive health information." />
+
+    <p v-if="!isOnline" class="offline-feature-message" role="status">
+      Account registration requires an internet connection. Nothing will be queued locally.
+    </p>
 
     <form class="form-panel" aria-label="Registration form" novalidate @submit.prevent="handleSubmit">
       <label>
@@ -183,7 +195,7 @@ async function handleSubmit() {
         {{ status.message }}
       </p>
 
-      <button type="submit">Create account</button>
+      <button type="submit" :disabled="!isOnline">Create account</button>
     </form>
   </section>
 </template>

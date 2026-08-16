@@ -9,10 +9,12 @@ import RatingInput from '../components/RatingInput.vue'
 import RatingSummary from '../components/RatingSummary.vue'
 import ServiceCard from '../components/ServiceCard.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { useConnectivity } from '../composables/useConnectivity.js'
 import { currentUser, isAuthenticated } from '../stores/authStore.js'
 import { useRatings } from '../stores/ratingStore.js'
 
 const route = useRoute()
+const { isOnline } = useConnectivity()
 
 const resource = computed(() => findResourceById(route.params.id))
 const relatedServices = computed(() =>
@@ -37,6 +39,9 @@ const userRating = computed(() =>
 )
 
 function handleRatingSubmit(score) {
+  if (!isOnline.value) {
+    throw new Error('Rating submission requires an internet connection.')
+  }
   return submitOrUpdateRating(resource.value.id, currentUser.value.id, score)
 }
 </script>
@@ -100,9 +105,13 @@ function handleRatingSubmit(score) {
           <RatingInput
             v-if="isAuthenticated"
             :current-score="userRating?.score"
-            :disabled="ratingsLoading"
+            :disabled="ratingsLoading || !isOnline"
             :submit-rating="handleRatingSubmit"
           />
+          <p v-if="isAuthenticated && !isOnline" class="offline-feature-message" role="status">
+            Rating submission requires an internet connection. Existing resource information
+            remains readable.
+          </p>
           <div v-else class="placeholder-notice">
             <strong>Login to rate this resource</strong>
             <p>

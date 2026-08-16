@@ -6,6 +6,7 @@ import AdminEmailPanel from '../components/AdminEmailPanel.vue'
 import AdminUserList from '../components/AdminUserList.vue'
 import FeatureCard from '../components/FeatureCard.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { useConnectivity } from '../composables/useConnectivity.js'
 import { useAppointments } from '../composables/useAppointments.js'
 import { healthEvents } from '../data/healthEvents'
 import { healthResources } from '../data/healthResources'
@@ -23,6 +24,7 @@ const {
   appointmentsError,
   updateAppointmentStatus,
 } = useAppointments()
+const { isOnline } = useConnectivity()
 const { ratings, ratingsLoading, ratingsError, getAverageRating, getRatingCount } = useRatings()
 const users = computed(() => getUsers())
 const selectedRecipientIds = ref(new Set())
@@ -153,6 +155,11 @@ const metrics = computed(() => {
       </p>
     </div>
 
+    <p v-if="!isOnline" class="offline-feature-message" role="status">
+      Live admin data may be unavailable while offline. Previously loaded aggregate information
+      can still be reviewed, but remote changes and email delivery are disabled.
+    </p>
+
     <p v-if="ratingsError" class="form-status error" role="alert">{{ ratingsError }}</p>
 
     <div v-if="isAdmin" class="page-stack">
@@ -192,6 +199,7 @@ const metrics = computed(() => {
         :appointments="appointments"
         :loading="appointmentsLoading"
         :error="appointmentsError"
+        :network-disabled="!isOnline"
         @update-status="updateAppointmentStatus"
       />
     </div>

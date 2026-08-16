@@ -6,6 +6,7 @@ import BookingConfirmation from '../components/BookingConfirmation.vue'
 import FormFieldError from '../components/FormFieldError.vue'
 import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { useConnectivity } from '../composables/useConnectivity.js'
 import { useAppointments } from '../composables/useAppointments.js'
 import { currentUser } from '../stores/authStore.js'
 import {
@@ -60,6 +61,7 @@ const isSubmitting = ref(false)
 const bookingMessage = ref('')
 const bookingMessageType = ref('status')
 const bookingWindow = getBookingWindow()
+const { isOnline } = useConnectivity()
 const {
   appointments,
   appointmentsLoading,
@@ -192,6 +194,12 @@ async function handleSubmit() {
   hasSubmitted.value = false
   bookingMessage.value = ''
 
+  if (!isOnline.value) {
+    bookingMessageType.value = 'alert'
+    bookingMessage.value = 'Appointment booking requires an internet connection.'
+    return
+  }
+
   if (!validateField()) {
     focusFirstError()
     return
@@ -287,6 +295,11 @@ watch(occupiedSlotKeys, () => {
       />
 
       <PlaceholderNotice text="Do not enter sensitive medical details. Notes are for coursework demonstration only and are limited to 500 characters." />
+
+      <p v-if="!isOnline" class="offline-feature-message" role="status">
+        Appointment booking requires an internet connection. You can still review information
+        already shown on this page.
+      </p>
 
       <AppointmentCalendar
         ref="calendarRef"
@@ -438,7 +451,7 @@ watch(occupiedSlotKeys, () => {
           {{ bookingMessage }}
         </p>
 
-        <button type="submit" :disabled="isSubmitting">
+        <button type="submit" :disabled="isSubmitting || !isOnline">
           {{ isSubmitting ? 'Booking appointment...' : 'Book appointment' }}
         </button>
       </form>
@@ -450,6 +463,8 @@ watch(occupiedSlotKeys, () => {
       :appointments="currentUserAppointments"
       :loading="appointmentsLoading"
       :error="appointmentsError"
+      :action-disabled="!isOnline"
+      disabled-message="Appointment changes require an internet connection."
       empty-text="You do not have any appointments yet."
       @delete="handleDelete"
     />

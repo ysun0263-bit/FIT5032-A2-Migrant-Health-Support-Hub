@@ -173,6 +173,16 @@ textarea:disabled {
   margin: 0.25rem 0 0;
 }
 
+.offline-feature-message {
+  border: 1px solid #d97706;
+  border-radius: var(--radius);
+  background: #fffbeb;
+  color: #78350f;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  font-weight: 650;
+}
+
 .card-meta {
   display: flex;
   flex-wrap: wrap;

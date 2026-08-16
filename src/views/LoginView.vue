@@ -4,10 +4,12 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import FormFieldError from '../components/FormFieldError.vue'
 import PlaceholderNotice from '../components/PlaceholderNotice.vue'
 import SectionHeading from '../components/SectionHeading.vue'
+import { useConnectivity } from '../composables/useConnectivity.js'
 import { isAdmin, login } from '../stores/authStore.js'
 import { validateLoginForm } from '../utils/authValidation.js'
 
 const route = useRoute()
+const { isOnline } = useConnectivity()
 const router = useRouter()
 const form = reactive({
   email: '',
@@ -62,6 +64,12 @@ async function handleSubmit() {
   status.message = ''
   status.type = ''
 
+  if (!isOnline.value) {
+    status.message = 'Login requires an internet connection.'
+    status.type = 'error'
+    return
+  }
+
   if (!validate()) {
     focusFirstError()
     return
@@ -88,6 +96,10 @@ async function handleSubmit() {
     />
 
     <PlaceholderNotice text="Authentication and session persistence are provided by Firebase. Leave Remember Me unchecked on a shared device." />
+
+    <p v-if="!isOnline" class="offline-feature-message" role="status">
+      Login requires an internet connection. Public cached resources remain available.
+    </p>
 
     <form class="form-panel" aria-label="Login form" novalidate @submit.prevent="handleSubmit">
       <label>
@@ -136,7 +148,7 @@ async function handleSubmit() {
         {{ status.message }}
       </p>
 
-      <button type="submit">Login</button>
+      <button type="submit" :disabled="!isOnline">Login</button>
     </form>
     <p>Need an account? <RouterLink class="text-link" to="/register">Create one</RouterLink></p>
   </section>

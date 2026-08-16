@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, reactive, ref } from 'vue'
+import { useConnectivity } from '../composables/useConnectivity.js'
 import {
   EMAIL_ATTACHMENT_ACCEPT,
   sendAdminEmail,
@@ -13,6 +14,7 @@ const props = defineProps({
   selectedUsers: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['clear-selection'])
+const { isOnline } = useConnectivity()
 
 const mode = ref('single')
 const form = reactive({ to: '', subject: '', message: '' })
@@ -92,6 +94,11 @@ async function focusFirstError() {
 async function handleSubmit() {
   if (sending.value) return
 
+  if (!isOnline.value) {
+    status.value = { type: 'error', message: 'Email delivery requires an internet connection.' }
+    return
+  }
+
   clearErrors()
   status.value = { type: '', message: '' }
   const recipientUserIds = props.selectedUsers.map((user) => user.uid ?? user.id).filter(Boolean)
@@ -154,6 +161,10 @@ async function handleSubmit() {
         sensitive health information in this coursework demonstration.
       </p>
     </div>
+
+    <p v-if="!isOnline" class="offline-feature-message" role="status">
+      Email delivery requires an internet connection. Draft content is not queued or stored.
+    </p>
 
     <form class="form-grid" novalidate @submit.prevent="handleSubmit">
       <fieldset class="full-width-field email-mode-fieldset">
@@ -309,7 +320,7 @@ async function handleSubmit() {
         <button
           type="submit"
           class="button primary"
-          :disabled="sending"
+          :disabled="sending || !isOnline"
           :aria-label="mode === 'bulk'
             ? `Send bulk email to ${selectedCount} selected users`
             : 'Send single email'"
