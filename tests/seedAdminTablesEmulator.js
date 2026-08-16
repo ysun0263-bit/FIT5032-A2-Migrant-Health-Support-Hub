@@ -14,6 +14,7 @@ function fields(values) {
   return Object.fromEntries(
     Object.entries(values).map(([key, value]) => {
       if (typeof value === 'boolean') return [key, { booleanValue: value }]
+      if (typeof value === 'number') return [key, { integerValue: String(value) }]
       if (value instanceof Date) return [key, { timestampValue: value.toISOString() }]
       return [key, { stringValue: String(value) }]
     }),
@@ -54,10 +55,23 @@ const authResult = await request(
     }),
   },
 )
+const userAuthResult = await request(
+  `http://${authHost}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-api-key`,
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'phase6c.user@example.test',
+      password: 'Phase6CUser123!',
+      returnSecureToken: true,
+    }),
+  },
+)
 
 const createdAt = new Date('2026-08-14T01:00:00.000Z')
 const users = [
   { uid: authResult.localId, fullName: 'Phase Two B Admin', email: 'phase2b.admin@example.test', role: 'admin', active: true },
+  { uid: userAuthResult.localId, fullName: 'Phase Six C User', email: 'phase6c.user@example.test', role: 'user', active: true },
   ...Array.from({ length: 11 }, (_, index) => ({
     uid: `seed-user-${String(index + 1).padStart(2, '0')}`,
     fullName: index === 10 ? '=Formula Check' : `Community User ${String(index + 1).padStart(2, '0')}`,
@@ -78,11 +92,15 @@ for (const [index, user] of users.entries()) {
 
 const topics = ['Finding a GP', 'Interpreter support', 'Health resource guidance']
 const statuses = ['pending', 'confirmed', 'completed', 'cancelled']
+const appointmentDaysAgo = [0, 1, 2, 3, 5, 6, 10, 15, 20, 29, 35, 60, 75, 89, 120]
+const analyticsReferenceDate = new Date('2026-08-15T01:00:00.000Z')
 
 for (let index = 0; index < 15; index += 1) {
   const number = String(index + 1).padStart(2, '0')
   const user = users[(index % (users.length - 1)) + 1]
-  const timestamp = new Date(createdAt.getTime() + (index + 20) * 60_000)
+  const timestamp = new Date(
+    analyticsReferenceDate.getTime() - appointmentDaysAgo[index] * 24 * 60 * 60 * 1000,
+  )
   await writeDocument('appointments', `seed-appointment-${number}`, {
     id: `seed-appointment-${number}`,
     userId: user.uid,
@@ -100,4 +118,20 @@ for (let index = 0; index < 15; index += 1) {
   })
 }
 
-console.log(`Seeded ${users.length} users and 15 appointments in ${projectId}.`)
+const resourceIds = ['finding-a-gp', 'mental-health-support', 'interpreter-services']
+const ratingScores = [1, 2, 3, 4, 4, 5, 5, 5]
+
+for (const [index, score] of ratingScores.entries()) {
+  const user = users[(index % (users.length - 1)) + 1]
+  const resourceId = resourceIds[index % resourceIds.length]
+  const timestamp = new Date(createdAt.getTime() + (index + 50) * 60_000)
+  await writeDocument('ratings', `${user.uid}__${resourceId}`, {
+    userId: user.uid,
+    resourceId,
+    score,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
+}
+
+console.log(`Seeded ${users.length} users, 15 appointments, and ${ratingScores.length} ratings in ${projectId}.`)

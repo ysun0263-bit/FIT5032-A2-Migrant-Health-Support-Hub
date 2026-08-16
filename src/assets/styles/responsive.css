@@ -19,6 +19,14 @@
   .card-grid.three {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-card-wide {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 767px) {

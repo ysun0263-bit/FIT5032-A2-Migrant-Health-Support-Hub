@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import AdminAnalytics from '../components/AdminAnalytics.vue'
 import AdminAppointmentList from '../components/AdminAppointmentList.vue'
 import AdminEmailPanel from '../components/AdminEmailPanel.vue'
 import AdminUserList from '../components/AdminUserList.vue'
@@ -164,6 +165,15 @@ const metrics = computed(() => {
           :tag="metric.tag"
         />
       </div>
+
+      <AdminAnalytics
+        :appointments="appointments"
+        :ratings="ratings"
+        :appointments-loading="appointmentsLoading"
+        :ratings-loading="ratingsLoading"
+        :appointments-error="appointmentsError"
+        :ratings-error="ratingsError"
+      />
 
       <AdminUserList
         :users="users"

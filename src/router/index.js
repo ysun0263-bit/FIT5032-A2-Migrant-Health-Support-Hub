@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { nextTick } from 'vue'
-import AdminDashboardView from '../views/AdminDashboardView.vue'
 import EventsView from '../views/EventsView.vue'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
@@ -37,7 +36,7 @@ const routes = [
   {
     path: '/admin',
     name: 'admin',
-    component: AdminDashboardView,
+    component: () => import('../views/AdminDashboardView.vue'),
     meta: { requiresAuth: true, roles: ['admin'], title: 'Admin Dashboard' },
   },
   { path: '/unauthorized', name: 'unauthorized', component: UnauthorizedView, meta: { title: 'Unauthorized' } },
